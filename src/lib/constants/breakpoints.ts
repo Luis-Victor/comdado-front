@@ -1,0 +1,8 @@
+import { DashboardBreakpoints } from '../types/dashboard';
+
+export const defaultBreakpoints: DashboardBreakpoints = {
+  sm: 576,
+  md: 768,
+  lg: 992,
+  xl: 1200,
+};
