@@ -25,7 +25,7 @@ export function TreemapChart({
   valueFormat = ".02s",
   labelSkipSize = 12,
   enableParentLabel = true,
-  parentLabelSize = 20,
+  parentLabelSize = 14,
   parentLabelPosition = 'top',
   colorMode = 'parentInherit',
   title,
@@ -39,7 +39,7 @@ export function TreemapChart({
   const themeConfig = {
     background: theme === 'dark' ? '#1F2937' : '#ffffff',
     textColor: theme === 'dark' ? '#F3F4F6' : '#111827',
-    fontSize: 12,
+    fontSize: 11,
   };
 
   return (
@@ -55,7 +55,7 @@ export function TreemapChart({
           ...themeConfig,
           labels: {
             text: {
-              fontSize: 12,
+              fontSize: 10,
               fill: theme === 'dark' ? '#F3F4F6' : '#111827'
             }
           },
@@ -66,6 +66,7 @@ export function TreemapChart({
               fontSize: themeConfig.fontSize,
               borderRadius: '0.5rem',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              padding: '8px'
             }
           }
         }}

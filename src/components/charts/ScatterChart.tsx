@@ -39,7 +39,7 @@ export function ScatterChart({
   description,
   xAxis,
   yAxis,
-  margin = { top: 20, right: 30, bottom: 20, left: 30 },
+  margin = { top: 20, right: 20, bottom: 30, left: 40 },
   enableGridX = true,
   enableGridY = true,
   enableLegend = true,
@@ -67,12 +67,18 @@ export function ScatterChart({
             dataKey="x"
             name={xAxis?.title || "X"}
             stroke="#6B7280"
-            fontSize={12}
+            fontSize={11}
             tickLine={false}
             axisLine={{ stroke: '#E5E7EB' }}
-            label={xAxis?.title ? { value: xAxis.title, position: 'bottom', offset: 0 } : undefined}
+            label={xAxis?.title ? { 
+              value: xAxis.title, 
+              position: 'insideBottom', 
+              offset: -10,
+              style: { fontSize: 11, textAnchor: 'middle' }
+            } : undefined}
             tickFormatter={xAxis?.tickFormat}
             domain={xAxis?.min !== undefined ? [xAxis.min, xAxis.max || 'auto'] : undefined}
+            tick={{ fontSize: 10 }}
           />
           
           <YAxis
@@ -80,12 +86,20 @@ export function ScatterChart({
             dataKey="y"
             name={yAxis?.title || "Y"}
             stroke="#6B7280"
-            fontSize={12}
+            fontSize={11}
             tickLine={false}
             axisLine={{ stroke: '#E5E7EB' }}
-            label={yAxis?.title ? { value: yAxis.title, angle: -90, position: 'left', offset: 0 } : undefined}
+            label={yAxis?.title ? { 
+              value: yAxis.title, 
+              angle: -90, 
+              position: 'insideLeft', 
+              offset: -5,
+              style: { fontSize: 11, textAnchor: 'middle' }
+            } : undefined}
             tickFormatter={yAxis?.tickFormat}
             domain={yAxis?.min !== undefined ? [yAxis.min, yAxis.max || 'auto'] : undefined}
+            tick={{ fontSize: 10 }}
+            width={40}
           />
           
           {enableTooltip && (
@@ -99,6 +113,8 @@ export function ScatterChart({
                   border: '1px solid #E5E7EB',
                   borderRadius: '0.5rem',
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                  fontSize: '11px',
+                  padding: '8px'
                 }}
               />
             )
@@ -108,10 +124,12 @@ export function ScatterChart({
             <Legend
               verticalAlign={legendPosition === 'bottom' ? 'bottom' : 'top'}
               align={legendPosition === 'right' ? 'right' : 'center'}
-              height={36}
+              height={20}
               iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: '11px' }}
               formatter={(value) => (
-                <span className="text-sm text-gray-700">{value}</span>
+                <span className="text-xs text-gray-700">{value}</span>
               )}
             />
           )}

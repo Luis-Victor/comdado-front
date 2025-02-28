@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Auth } from './pages/Auth';
-import Dashboard from './components/Dashboard';
+import Dashboard from './pages/Dashboard';
+import InventoryDashboard from './pages/InventoryDashboard';
+import MarketingDashboard from './pages/MarketingDashboard';
 import ChartDocs from './pages/ChartDocs';
 import MagicCharts from './pages/MagicCharts';
+import DashboardCreator from './pages/DashboardCreator';
 import { supabase } from './lib/supabase';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 
@@ -44,6 +47,18 @@ function App() {
         <Route 
           path="/dashboard" 
           element={isAuthenticated ? <Dashboard /> : <Navigate to="/auth" replace />} 
+        />
+        <Route 
+          path="/inventory" 
+          element={isAuthenticated ? <InventoryDashboard /> : <Navigate to="/auth" replace />} 
+        />
+        <Route 
+          path="/marketing" 
+          element={isAuthenticated ? <MarketingDashboard /> : <Navigate to="/auth" replace />} 
+        />
+        <Route 
+          path="/dashboard/create" 
+          element={isAuthenticated ? <DashboardCreator /> : <Navigate to="/auth" replace />} 
         />
         <Route 
           path="/docs/charts" 

@@ -1,0 +1,291 @@
+{
+    "title": "Financial Performance Dashboard",
+    "description": "A detailed dashboard for monitoring financial metrics and budget performance",
+    "theme": "light",
+    "layout": {
+        "rows": 7,
+        "columns": 12,
+        "gap": 12,
+        "rowHeight": 100,
+        "responsive": {
+            "breakpoints": {
+                "sm": 576,
+                "md": 768,
+                "lg": 992,
+                "xl": 1200
+            },
+            "behavior": "reflow",
+            "columnThreshold": {
+                "sm": 4,
+                "md": 8,
+                "lg": 12,
+                "xl": 12
+            },
+            "gapThreshold": {
+                "sm": 8,
+                "md": 10,
+                "lg": 12,
+                "xl": 12
+            },
+            "priorityLevels": 3
+        }
+    },
+    "components": [
+        {
+            "id": "revenue-kpi",
+            "type": "Card",
+            "title": "Revenue",
+            "position": {
+                "row": 1,
+                "column": 1,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 1,
+            "options": {
+                "format": "currency",
+                "showChange": true,
+                "changeType": "percentage",
+                "icon": "chartLineUp",
+                "color": "primary"
+            }
+        },
+        {
+            "id": "expenses-kpi",
+            "type": "Card",
+            "title": "Expenses",
+            "position": {
+                "row": 1,
+                "column": 4,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 1,
+            "options": {
+                "format": "currency",
+                "showChange": true,
+                "changeType": "percentage",
+                "icon": "chartLineDown",
+                "color": "warning"
+            }
+        },
+        {
+            "id": "profit-margin-kpi",
+            "type": "Card",
+            "title": "Profit Margin",
+            "position": {
+                "row": 1,
+                "column": 7,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 1,
+            "options": {
+                "format": "percentage",
+                "decimals": 2,
+                "showChange": true,
+                "changeType": "percentage",
+                "icon": "calculator",
+                "color": "success"
+            }
+        },
+        {
+            "id": "cash-flow-kpi",
+            "type": "Card",
+            "title": "Cash Flow",
+            "position": {
+                "row": 1,
+                "column": 10,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 2,
+            "options": {
+                "format": "currency",
+                "showChange": true,
+                "changeType": "percentage",
+                "icon": "coins",
+                "color": "info"
+            }
+        },
+        {
+            "id": "rev-expense-trend",
+            "type": "BarChart",
+            "title": "Revenue vs Expenses Trend",
+            "position": {
+                "row": 2,
+                "column": 1,
+                "width": 12,
+                "height": 2
+            },
+            "priority": 1,
+            "options": {
+                "enableGridY": true,
+                "enableLegend": true,
+                "legendPosition": "bottom",
+                "enableTooltip": true,
+                "layout": "vertical",
+                "groupMode": "grouped",
+                "xAxis": {
+                    "title": "Month"
+                },
+                "yAxis": {
+                    "title": "Amount"
+                },
+                "margin": {
+                    "top": 20,
+                    "right": 20,
+                    "bottom": 50,
+                    "left": 60
+                }
+            }
+        },
+        {
+            "id": "cost-structure",
+            "type": "TreemapChart",
+            "title": "Cost Structure Breakdown",
+            "position": {
+                "row": 4,
+                "column": 1,
+                "width": 6,
+                "height": 2
+            },
+            "priority": 2,
+            "options": {
+                "enableLabels": true,
+                "labelSkipSize": 10,
+                "padding": 4,
+                "innerPadding": 1,
+                "colorBy": "id",
+                "colorScale": {
+                    "type": "sequential",
+                    "scheme": "reds"
+                }
+            }
+        },
+        {
+            "id": "revenue-streams",
+            "type": "BarChart",
+            "title": "Revenue Streams",
+            "position": {
+                "row": 4,
+                "column": 7,
+                "width": 6,
+                "height": 2
+            },
+            "priority": 2,
+            "options": {
+                "layout": "horizontal",
+                "enableLegend": false,
+                "enableGridX": true,
+                "barSize": 20,
+                "margin": {
+                    "top": 20,
+                    "right": 20,
+                    "bottom": 40,
+                    "left": 120
+                }
+            }
+        },
+        {
+            "id": "profit-waterfall",
+            "type": "WaterfallChart",
+            "title": "Profit Waterfall",
+            "position": {
+                "row": 6,
+                "column": 1,
+                "width": 6,
+                "height": 2
+            },
+            "priority": 2,
+            "options": {
+                "layout": "vertical",
+                "enableGridY": true,
+                "enableLabels": true,
+                "enableLegend": false,
+                "colors": {
+                    "positive": "#4caf50",
+                    "negative": "#f44336",
+                    "total": "#2196f3"
+                },
+                "margin": {
+                    "top": 20,
+                    "right": 20,
+                    "bottom": 50,
+                    "left": 60
+                }
+            }
+        },
+        {
+            "id": "budget-vs-actual",
+            "type": "BarChart",
+            "title": "Budget vs Actual",
+            "position": {
+                "row": 6,
+                "column": 7,
+                "width": 6,
+                "height": 2
+            },
+            "priority": 2,
+            "options": {
+                "layout": "vertical",
+                "groupMode": "grouped",
+                "enableGridY": true,
+                "enableLegend": true,
+                "legendPosition": "bottom",
+                "margin": {
+                    "top": 20,
+                    "right": 20,
+                    "bottom": 50,
+                    "left": 60
+                }
+            }
+        }
+    ],
+    "filters": [
+        {
+            "id": "date-range",
+            "type": "date",
+            "label": "Period",
+            "default": "thisYear",
+            "position": {
+                "area": "topbar",
+                "alignment": "right"
+            },
+            "affectsComponents": [
+                "all"
+            ]
+        },
+        {
+            "id": "department-filter",
+            "type": "dropdown",
+            "label": "Department",
+            "default": "all",
+            "position": {
+                "area": "topbar",
+                "alignment": "right"
+            },
+            "affectsComponents": [
+                "revenue-streams",
+                "cost-structure",
+                "budget-vs-actual",
+                "profit-waterfall"
+            ]
+        },
+        {
+            "id": "expense-category",
+            "type": "dropdown",
+            "label": "Expense Category",
+            "default": "all",
+            "position": {
+                "area": "topbar",
+                "alignment": "right"
+            },
+            "affectsComponents": [
+                "cost-structure",
+                "expenses-kpi",
+                "budget-vs-actual"
+            ]
+        }
+    ]
+}

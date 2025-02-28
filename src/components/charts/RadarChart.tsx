@@ -24,12 +24,12 @@ export function RadarChart({
   curve = 'linear',
   gridLevels = 5,
   gridShape = 'circular',
-  dotSize = 8,
-  dotBorderWidth = 2,
+  dotSize = 6,
+  dotBorderWidth = 1,
   blendMode = 'multiply',
   title,
   description,
-  margin = { top: 70, right: 80, bottom: 40, left: 80 },
+  margin = { top: 40, right: 40, bottom: 40, left: 40 },
   colors = { scheme: 'nivo' },
   theme = 'light',
   enableLegend = true,
@@ -42,7 +42,7 @@ export function RadarChart({
   const themeConfig = {
     background: theme === 'dark' ? '#1F2937' : '#ffffff',
     textColor: theme === 'dark' ? '#F3F4F6' : '#111827',
-    fontSize: 12,
+    fontSize: 11,
   };
 
   return (
@@ -64,6 +64,11 @@ export function RadarChart({
         animate={animate}
         theme={{
           ...themeConfig,
+          labels: {
+            text: {
+              fontSize: 10
+            }
+          },
           tooltip: {
             container: {
               background: themeConfig.background,
@@ -71,6 +76,7 @@ export function RadarChart({
               fontSize: themeConfig.fontSize,
               borderRadius: '0.5rem',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              padding: '8px'
             }
           }
         }}
@@ -79,12 +85,12 @@ export function RadarChart({
           {
             anchor: 'top-left',
             direction: 'column',
-            translateX: -50,
-            translateY: -40,
-            itemWidth: 80,
-            itemHeight: 20,
+            translateX: -20,
+            translateY: -20,
+            itemWidth: 60,
+            itemHeight: 14,
             itemTextColor: themeConfig.textColor,
-            symbolSize: 12,
+            symbolSize: 10,
             symbolShape: 'circle',
             effects: [
               {

@@ -1,0 +1,285 @@
+{
+    "title": "Executive Overview Dashboard",
+    "description": "A high-level dashboard for executives to monitor key business metrics at a glance",
+    "theme": "light",
+    "layout": {
+        "rows": 7,
+        "columns": 12,
+        "gap": 12,
+        "rowHeight": 100,
+        "responsive": {
+            "breakpoints": {
+                "sm": 576,
+                "md": 768,
+                "lg": 992,
+                "xl": 1200
+            },
+            "behavior": "reflow",
+            "columnThreshold": {
+                "sm": 4,
+                "md": 8,
+                "lg": 12,
+                "xl": 12
+            },
+            "gapThreshold": {
+                "sm": 8,
+                "md": 10,
+                "lg": 12,
+                "xl": 12
+            },
+            "priorityLevels": 3
+        }
+    },
+    "components": [
+        {
+            "id": "kpi-1",
+            "type": "Card",
+            "title": "Revenue",
+            "position": {
+                "row": 1,
+                "column": 1,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 1,
+            "options": {
+                "format": "currency",
+                "showChange": true,
+                "changeType": "percentage",
+                "icon": "chartLineUp",
+                "color": "primary"
+            }
+        },
+        {
+            "id": "kpi-2",
+            "type": "Card",
+            "title": "Customers",
+            "position": {
+                "row": 1,
+                "column": 4,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 1,
+            "options": {
+                "format": "number",
+                "showChange": true,
+                "changeType": "percentage",
+                "icon": "users",
+                "color": "success"
+            }
+        },
+        {
+            "id": "kpi-3",
+            "type": "Card",
+            "title": "Profit Margin",
+            "position": {
+                "row": 1,
+                "column": 7,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 1,
+            "options": {
+                "format": "percentage",
+                "showChange": true,
+                "changeType": "percentage",
+                "icon": "chartPieSlice",
+                "color": "info"
+            }
+        },
+        {
+            "id": "kpi-4",
+            "type": "Card",
+            "title": "Customer Satisfaction",
+            "position": {
+                "row": 1,
+                "column": 10,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 2,
+            "options": {
+                "format": "decimal",
+                "decimals": 1,
+                "showChange": true,
+                "changeType": "value",
+                "icon": "heart",
+                "color": "warning"
+            }
+        },
+        {
+            "id": "main-trend",
+            "type": "LineChart",
+            "title": "Business Performance Trends",
+            "position": {
+                "row": 2,
+                "column": 1,
+                "width": 9,
+                "height": 3
+            },
+            "priority": 1,
+            "options": {
+                "enableGridY": true,
+                "enableLegend": true,
+                "legendPosition": "bottom",
+                "enableTooltip": true,
+                "enablePointLabels": false,
+                "xAxis": {
+                    "title": "Month"
+                },
+                "yAxis": {
+                    "title": "Value"
+                },
+                "margin": {
+                    "top": 20,
+                    "right": 20,
+                    "bottom": 50,
+                    "left": 60
+                }
+            }
+        },
+        {
+            "id": "top-items",
+            "type": "BarChart",
+            "title": "Top 5 Items",
+            "position": {
+                "row": 2,
+                "column": 10,
+                "width": 3,
+                "height": 3
+            },
+            "priority": 2,
+            "options": {
+                "layout": "horizontal",
+                "enableLegend": false,
+                "enableGridX": true,
+                "enableGridY": false,
+                "barSize": 20,
+                "margin": {
+                    "top": 20,
+                    "right": 20,
+                    "bottom": 50,
+                    "left": 100
+                }
+            }
+        },
+        {
+            "id": "segment-breakdown",
+            "type": "PieChart",
+            "title": "Segment Breakdown",
+            "position": {
+                "row": 5,
+                "column": 1,
+                "width": 3,
+                "height": 3
+            },
+            "priority": 2,
+            "options": {
+                "innerRadius": 0.5,
+                "padAngle": 0.5,
+                "cornerRadius": 3,
+                "enableLegend": true,
+                "legendPosition": "bottom"
+            }
+        },
+        {
+            "id": "category-analysis",
+            "type": "BarChart",
+            "title": "Category Analysis",
+            "position": {
+                "row": 5,
+                "column": 4,
+                "width": 3,
+                "height": 3
+            },
+            "priority": 2,
+            "options": {
+                "layout": "vertical",
+                "enableLegend": true,
+                "legendPosition": "bottom",
+                "enableGridY": true
+            }
+        },
+        {
+            "id": "regional-map",
+            "type": "MapChart",
+            "title": "Regional Performance",
+            "position": {
+                "row": 5,
+                "column": 7,
+                "width": 3,
+                "height": 3
+            },
+            "priority": 3,
+            "options": {
+                "projection": "mercator",
+                "enableLegend": true,
+                "colorScale": "sequential"
+            }
+        },
+        {
+            "id": "progress-tracking",
+            "type": "GaugeChart",
+            "title": "Goal Progress",
+            "position": {
+                "row": 5,
+                "column": 10,
+                "width": 3,
+                "height": 3
+            },
+            "priority": 3,
+            "options": {
+                "arcWidth": 0.2,
+                "showNeedle": true,
+                "showText": true,
+                "textFormat": "percentage",
+                "thresholds": [
+                    {
+                        "value": 33,
+                        "color": "#ff4c4c"
+                    },
+                    {
+                        "value": 67,
+                        "color": "#ffbb00"
+                    },
+                    {
+                        "value": 100,
+                        "color": "#4caf50"
+                    }
+                ]
+            }
+        }
+    ],
+    "filters": [
+        {
+            "id": "date-range",
+            "type": "date",
+            "label": "Date Range",
+            "default": "last30days",
+            "position": {
+                "area": "topbar",
+                "alignment": "right"
+            },
+            "affectsComponents": [
+                "all"
+            ]
+        },
+        {
+            "id": "segment-filter",
+            "type": "dropdown",
+            "label": "Segment",
+            "default": "all",
+            "position": {
+                "area": "topbar",
+                "alignment": "right"
+            },
+            "affectsComponents": [
+                "segment-breakdown",
+                "category-analysis",
+                "regional-map",
+                "main-trend"
+            ]
+        }
+    ]
+}

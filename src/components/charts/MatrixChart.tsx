@@ -3,12 +3,14 @@ import { ResponsiveHeatMap } from '@nivo/heatmap';
 import { BaseChartProps } from '../../lib/types/chart';
 import { ChartContainer } from './ChartContainer';
 
+interface MatrixDataPoint {
+  x: string;
+  y: number;
+}
+
 interface MatrixData {
   id: string;
-  data: Array<{
-    x: string;
-    y: number;
-  }>;
+  data: MatrixDataPoint[];
 }
 
 interface MatrixChartProps extends BaseChartProps {
@@ -31,7 +33,7 @@ export function MatrixChart({
   cellOpacity = 1,
   title,
   description,
-  margin = { top: 60, right: 90, bottom: 60, left: 90 },
+  margin = { top: 30, right: 30, bottom: 40, left: 60 },
   colors = { type: 'sequential', scheme: 'blues' },
   theme = 'light',
   enableLegend = true,
@@ -91,7 +93,7 @@ export function MatrixChart({
   const themeConfig = {
     background: theme === 'dark' ? '#1F2937' : '#ffffff',
     textColor: theme === 'dark' ? '#F3F4F6' : '#111827',
-    fontSize: 12,
+    fontSize: 11,
   };
 
   return (
@@ -108,7 +110,23 @@ export function MatrixChart({
           tickRotation: -45,
           legend: xLegend,
           legendPosition: 'middle',
-          legendOffset: -40
+          legendOffset: -20,
+          renderTick: (tick) => (
+            <g transform={`translate(${tick.x},${tick.y})`}>
+              <line stroke="#777" strokeWidth={1} y1={0} y2={5} />
+              <text
+                textAnchor="middle"
+                dominantBaseline="text-before-edge"
+                transform={`translate(0,7) rotate(-45)`}
+                style={{
+                  fontSize: 10,
+                  fill: themeConfig.textColor,
+                }}
+              >
+                {tick.value.length > 8 ? `${tick.value.substring(0, 8)}...` : tick.value}
+              </text>
+            </g>
+          )
         }}
         axisLeft={{
           tickSize: 5,
@@ -116,7 +134,23 @@ export function MatrixChart({
           tickRotation: 0,
           legend: yLegend,
           legendPosition: 'middle',
-          legendOffset: -72
+          legendOffset: -40,
+          renderTick: (tick) => (
+            <g transform={`translate(${tick.x},${tick.y})`}>
+              <line stroke="#777" strokeWidth={1} x1={0} x2={-5} />
+              <text
+                textAnchor="end"
+                dominantBaseline="middle"
+                transform="translate(-10,0)"
+                style={{
+                  fontSize: 10,
+                  fill: themeConfig.textColor,
+                }}
+              >
+                {tick.value.length > 12 ? `${tick.value.substring(0, 12)}...` : tick.value}
+              </text>
+            </g>
+          )
         }}
         colors={colors}
         emptyColor={theme === 'dark' ? '#374151' : '#ffffff'}
@@ -132,6 +166,11 @@ export function MatrixChart({
         motionConfig={motionConfig}
         theme={{
           ...themeConfig,
+          labels: {
+            text: {
+              fontSize: 10
+            }
+          },
           tooltip: {
             container: {
               background: themeConfig.background,
@@ -139,6 +178,7 @@ export function MatrixChart({
               fontSize: themeConfig.fontSize,
               borderRadius: '0.5rem',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              padding: '8px'
             }
           }
         }}
@@ -146,8 +186,8 @@ export function MatrixChart({
           {
             anchor: 'bottom',
             translateX: 0,
-            translateY: 30,
-            length: 400,
+            translateY: 20,
+            length: 120,
             thickness: 8,
             direction: 'row',
             tickPosition: 'after',

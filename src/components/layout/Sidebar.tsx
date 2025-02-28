@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   BookOpen,
@@ -9,7 +9,17 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  PlusSquare,
+  ChevronDown,
+  BarChart,
+  LineChart,
+  PieChart,
+  Activity,
+  Package,
+  ShoppingCart,
+  TrendingUp
 } from 'lucide-react';
+import { dashboardTemplates } from '../../lib/config/templates';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -19,7 +29,10 @@ interface SidebarProps {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Sales Dashboard', href: '/dashboard', icon: BarChart },
+  { name: 'Inventory Dashboard', href: '/inventory', icon: Package },
+  { name: 'Marketing Dashboard', href: '/marketing', icon: TrendingUp },
+  { name: 'Create Dashboard', href: '/dashboard/create', icon: PlusSquare },
   { name: 'Chart Docs', href: '/docs/charts', icon: BookOpen },
   { name: 'Magic Charts', href: '/magic-charts', icon: Wand2 },
 ];
@@ -31,7 +44,77 @@ const secondaryNavigation = [
 
 export function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: SidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const isActive = (path: string) => location.pathname === path;
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowTemplateDropdown(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const handleTemplateSelect = (templateId: string) => {
+    // Navigate to create dashboard with the selected template
+    navigate(`/dashboard/create?template=${templateId}`);
+    setShowTemplateDropdown(false);
+    onClose();
+  };
+
+  // Template icons mapping
+  const templateIconMap: Record<string, React.ElementType> = {
+    'executive-overview': Activity,
+    'sales-marketing': BarChart,
+    'financial-performance': LineChart,
+    'operational-dashboard': PieChart
+  };
+
+  // Function to render tooltip content based on item name
+  const getTooltipContent = (itemName: string) => {
+    switch(itemName) {
+      case 'Sales Dashboard':
+        return 'View sales metrics, revenue trends, and product performance';
+      case 'Inventory Dashboard':
+        return 'Monitor inventory levels and identify products that need restocking';
+      case 'Marketing Dashboard':
+        return 'Analyze marketing campaign performance and ROI';
+      case 'Create Dashboard':
+        return (
+          <div className="p-2">
+            <p>Create customized dashboards with our intelligent template selection.</p>
+            <div className="mt-2 pt-2 border-t border-gray-700">
+              <p className="font-medium">Available templates:</p>
+              <ul className="mt-1 list-disc list-inside text-xs">
+                {dashboardTemplates.slice(0, 3).map(template => (
+                  <li key={template.id}>{template.name}</li>
+                ))}
+                {dashboardTemplates.length > 3 && <li>...and more</li>}
+              </ul>
+            </div>
+          </div>
+        );
+      case 'Chart Docs':
+        return 'Documentation for available chart types and configurations';
+      case 'Magic Charts':
+        return 'AI-powered chart recommendations based on your data';
+      case 'Settings':
+        return 'Configure application settings and preferences';
+      case 'Help':
+        return 'Get help and support for using the dashboard platform';
+      default:
+        return itemName;
+    }
+  };
 
   return (
     <>
@@ -76,33 +159,126 @@ export function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: Sidebar
           <nav className="flex-1 px-2 py-4 space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
+              const isCreateDashboard = item.name === 'Create Dashboard';
+              
+              if (isCreateDashboard) {
+                return (
+                  <div key={item.name} className="relative group" ref={dropdownRef}>
+                    <button
+                      className={`w-full ${
+                        isActive(item.href)
+                          ? 'bg-gray-100 text-gray-900'
+                          : 'text-blue-700 bg-blue-50 hover:bg-blue-100 hover:text-blue-800'
+                      } group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md
+                      mt-2 mb-2 border border-blue-200`}
+                      onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
+                      onMouseEnter={() => setHoveredItem(item.name)}
+                      onMouseLeave={() => setHoveredItem(null)}
+                    >
+                      <div className="flex items-center">
+                        <PlusSquare className="text-blue-500 flex-shrink-0 h-6 w-6" />
+                        <span 
+                          className={`ml-3 whitespace-nowrap transition-opacity duration-300 ${
+                            isExpanded ? 'opacity-100' : 'opacity-0 md:hidden'
+                          }`}
+                        >
+                          {item.name}
+                        </span>
+                      </div>
+                      {isExpanded && (
+                        <ChevronDown 
+                          className={`h-4 w-4 transition-transform duration-200 ${
+                            showTemplateDropdown ? 'transform rotate-180' : ''
+                          }`} 
+                        />
+                      )}
+                    </button>
+                    
+                    {/* Enhanced tooltip for collapsed mode */}
+                    {!isExpanded && (
+                      <div className="absolute left-full ml-2 top-0 z-10 w-64 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                        {getTooltipContent(item.name)}
+                      </div>
+                    )}
+                    
+                    {hoveredItem === item.name && isExpanded && !showTemplateDropdown && (
+                      <div className="absolute left-full ml-2 top-0 z-10 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg">
+                        <p>Create custom dashboards with our intelligent template selection system.</p>
+                        <p className="mt-1">Choose from pre-built templates or get recommendations based on your business needs.</p>
+                      </div>
+                    )}
+                    
+                    {/* Template dropdown */}
+                    {showTemplateDropdown && isExpanded && (
+                      <div className="absolute left-0 right-0 mt-1 z-10 bg-white rounded-md shadow-lg border border-gray-200 py-1">
+                        <Link 
+                          to={item.href}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-medium"
+                          onClick={() => {
+                            setShowTemplateDropdown(false);
+                            onClose();
+                          }}
+                        >
+                          All Templates
+                        </Link>
+                        <div className="border-t border-gray-100 my-1"></div>
+                        <p className="px-4 py-1 text-xs text-gray-500 uppercase font-semibold">Quick Select</p>
+                        {dashboardTemplates.map(template => {
+                          const TemplateIcon = templateIconMap[template.id] || Activity;
+                          return (
+                            <button
+                              key={template.id}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                              onClick={() => handleTemplateSelect(template.id)}
+                            >
+                              <TemplateIcon className="h-4 w-4 text-gray-500 mr-2" />
+                              <span>{template.name.length > 20 ? template.name.substring(0, 20) + '...' : template.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              
               return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`${
-                    isActive(item.href)
-                      ? 'bg-gray-100 text-gray-900'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
-                  onClick={() => onClose()}
-                  title={!isExpanded ? item.name : undefined}
-                >
-                  <Icon
+                <div key={item.name} className="relative group">
+                  <Link
+                    to={item.href}
                     className={`${
                       isActive(item.href)
-                        ? 'text-gray-500'
-                        : 'text-gray-400 group-hover:text-gray-500'
-                    } flex-shrink-0 h-6 w-6`}
-                  />
-                  <span 
-                    className={`ml-3 whitespace-nowrap transition-opacity duration-300 ${
-                      isExpanded ? 'opacity-100' : 'opacity-0 md:hidden'
-                    }`}
+                        ? 'bg-gray-100 text-gray-900'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
+                    onClick={() => onClose()}
+                    title={!isExpanded ? item.name : undefined}
+                    onMouseEnter={() => setHoveredItem(item.name)}
+                    onMouseLeave={() => setHoveredItem(null)}
                   >
-                    {item.name}
-                  </span>
-                </Link>
+                    <Icon
+                      className={`${
+                        isActive(item.href)
+                          ? 'text-gray-500'
+                          : 'text-gray-400 group-hover:text-gray-500'
+                      } flex-shrink-0 h-6 w-6`}
+                    />
+                    <span 
+                      className={`ml-3 whitespace-nowrap transition-opacity duration-300 ${
+                        isExpanded ? 'opacity-100' : 'opacity-0 md:hidden'
+                      }`}
+                    >
+                      {item.name}
+                    </span>
+                  </Link>
+                  
+                  {/* Enhanced tooltip for collapsed mode */}
+                  {!isExpanded && (
+                    <div className="absolute left-full ml-2 top-0 z-10 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                      {getTooltipContent(item.name)}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>
@@ -112,22 +288,30 @@ export function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: Sidebar
               {secondaryNavigation.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    className="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md"
-                    onClick={() => onClose()}
-                    title={!isExpanded ? item.name : undefined}
-                  >
-                    <Icon className="text-gray-400 group-hover:text-gray-500 flex-shrink-0 h-6 w-6" />
-                    <span 
-                      className={`ml-3 whitespace-nowrap transition-opacity duration-300 ${
-                        isExpanded ? 'opacity-100' : 'opacity-0 md:hidden'
-                      }`}
+                  <div key={item.name} className="relative group">
+                    <Link
+                      to={item.href}
+                      className="text-gray-600 hover:bg-gray-50 hover:text-gray-900 group flex items-center px-2 py-2 text-sm font-medium rounded-md"
+                      onClick={() => onClose()}
+                      title={!isExpanded ? item.name : undefined}
                     >
-                      {item.name}
-                    </span>
-                  </Link>
+                      <Icon className="text-gray-400 group-hover:text-gray-500 flex-shrink-0 h-6 w-6" />
+                      <span 
+                        className={`ml-3 whitespace-nowrap transition-opacity duration-300 ${
+                          isExpanded ? 'opacity-100' : 'opacity-0 md:hidden'
+                        }`}
+                      >
+                        {item.name}
+                      </span>
+                    </Link>
+                    
+                    {/* Enhanced tooltip for collapsed mode */}
+                    {!isExpanded && (
+                      <div className="absolute left-full ml-2 top-0 z-10 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                        {getTooltipContent(item.name)}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </nav>

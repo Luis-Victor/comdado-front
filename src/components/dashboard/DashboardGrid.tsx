@@ -34,11 +34,14 @@ export function DashboardGrid({ config, onComponentUpdate }: DashboardGridProps)
   };
 
   const renderComponent = (component: DashboardComponent) => {
+    // Generate a unique key for each component
+    const componentKey = `component-${component.id}`;
+    
     // Special handling for Card components
     if (component.type === 'Card') {
       return (
         <div
-          key={component.id}
+          key={componentKey}
           style={getGridItemStyle(component, breakpoint, columns)}
           className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300"
         >
@@ -51,7 +54,7 @@ export function DashboardGrid({ config, onComponentUpdate }: DashboardGridProps)
     if (component.type === 'LineChart') {
       return (
         <div
-          key={component.id}
+          key={componentKey}
           style={getGridItemStyle(component, breakpoint, columns)}
           className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300"
         >
@@ -69,7 +72,7 @@ export function DashboardGrid({ config, onComponentUpdate }: DashboardGridProps)
     if (component.type === 'BarChart') {
       return (
         <div
-          key={component.id}
+          key={componentKey}
           style={getGridItemStyle(component, breakpoint, columns)}
           className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300"
         >
@@ -88,13 +91,23 @@ export function DashboardGrid({ config, onComponentUpdate }: DashboardGridProps)
     return null;
   };
 
+  // Handle empty state
+  if (components.length === 0) {
+    return (
+      <div className="w-full min-h-[400px] bg-gray-50 rounded-xl flex items-center justify-center">
+        <div className="text-center p-8">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No data to display</h3>
+          <p className="text-gray-500">
+            Try adjusting your filters or refreshing the dashboard.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full min-h-screen bg-gray-50">
       <div className="max-w-[2400px] mx-auto">
-        <header className="px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">{config.title}</h1>
-        </header>
-        
         <div style={gridStyle}>
           {components
             .filter(component => {

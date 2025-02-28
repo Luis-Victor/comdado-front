@@ -30,7 +30,7 @@ export function PieChart({
   activeOuterRadiusOffset = 8,
   title,
   description,
-  margin = { top: 40, right: 80, bottom: 80, left: 80 },
+  margin = { top: 10, right: 10, bottom: 80, left: 10 }, // Increased bottom margin for legend
   colors = { scheme: 'nivo' },
   theme = 'light',
   enableLegend = true,
@@ -43,8 +43,49 @@ export function PieChart({
   const themeConfig = {
     background: theme === 'dark' ? '#1F2937' : '#ffffff',
     textColor: theme === 'dark' ? '#F3F4F6' : '#111827',
-    fontSize: 12,
+    fontSize: 10,
+    tooltip: {
+      container: {
+        background: theme === 'dark' ? '#1F2937' : '#ffffff',
+        color: theme === 'dark' ? '#F3F4F6' : '#111827',
+        fontSize: 10,
+        borderRadius: '0.5rem',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        padding: '6px'
+      }
+    }
   };
+
+  // Calculate appropriate legend settings based on container size
+  const legendSettings = React.useMemo(() => {
+    if (legendPosition === 'bottom') {
+      return {
+        anchor: 'bottom',
+        direction: 'row',
+        justify: false,
+        translateX: 0,
+        translateY: 56, // Increased to prevent overflow
+        itemsSpacing: 0,
+        itemWidth: 60,
+        itemHeight: 12,
+        itemDirection: 'left-to-right',
+        symbolSize: 8
+      };
+    } else {
+      return {
+        anchor: 'right',
+        direction: 'column',
+        justify: false,
+        translateX: 10,
+        translateY: 0,
+        itemsSpacing: 0,
+        itemWidth: 60,
+        itemHeight: 12,
+        itemDirection: 'left-to-right',
+        symbolSize: 8
+      };
+    }
+  }, [legendPosition]);
 
   return (
     <ChartContainer title={title} description={description}>
@@ -58,18 +99,26 @@ export function PieChart({
         colors={colors}
         borderWidth={1}
         borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
-        enableArcLinkLabels={true}
+        enableArcLinkLabels={false}
         arcLinkLabelsSkipAngle={10}
         arcLinkLabelsTextColor={themeConfig.textColor}
-        arcLinkLabelsThickness={2}
+        arcLinkLabelsThickness={1}
         arcLinkLabelsColor={{ from: 'color' }}
-        arcLabelsSkipAngle={10}
-        arcLabelsTextColor={{ from: 'color', modifiers: [['darker', 2]] }}
+        arcLabelsSkipAngle={15}
+        arcLabelsTextColor={{ from: 'color', modifiers: [['darker', 3]] }}
+        arcLabelsRadiusOffset={0.6}
+        arcLabelsThickness={2}
         sortByValue={sortByValue}
         animate={animate}
         motionConfig={motionConfig}
         theme={{
           ...themeConfig,
+          labels: {
+            text: {
+              fontSize: 9,
+              fontWeight: 600
+            }
+          },
           tooltip: {
             container: {
               background: themeConfig.background,
@@ -77,24 +126,25 @@ export function PieChart({
               fontSize: themeConfig.fontSize,
               borderRadius: '0.5rem',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              padding: '6px'
             }
           }
         }}
         valueFormat={tooltipFormat}
         legends={enableLegend ? [
           {
-            anchor: legendPosition === 'bottom' ? 'bottom' : 'right',
-            direction: legendPosition === 'bottom' ? 'row' : 'column',
-            justify: false,
-            translateX: legendPosition === 'right' ? 80 : 0,
-            translateY: legendPosition === 'bottom' ? 56 : 0,
-            itemsSpacing: 0,
-            itemWidth: 100,
-            itemHeight: 18,
-            itemDirection: 'left-to-right',
+            ...legendSettings,
             itemOpacity: 1,
-            symbolSize: 18,
             symbolShape: 'circle',
+            itemTextColor: themeConfig.textColor,
+            effects: [
+              {
+                on: 'hover',
+                style: {
+                  itemTextColor: theme === 'dark' ? '#FFFFFF' : '#000000'
+                }
+              }
+            ]
           }
         ] : []}
       />

@@ -4,500 +4,360 @@ import { PageHeader } from '../components/common/PageHeader';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ChartRenderer } from '../components/magic/ChartRenderer';
 import { ChartConfig } from '../lib/types/magicChart';
-import { FileDown, RefreshCw } from 'lucide-react';
+import { FileDown, RefreshCw, Settings, Save, WifiOff } from 'lucide-react';
+import { DashboardConfig, Breakpoint } from '../lib/types/dashboard';
+import { useBreakpoint } from '../lib/hooks/useBreakpoint';
+import { getGridItemStyle } from '../lib/utils/dashboardUtils';
+import { saveAs } from 'file-saver';
+import { 
+  fetchDashboardConfig, 
+  fetchChartsCount, 
+  fetchChartData
+} from '../lib/api/magicChartsApi';
+import { generateMagicChartsSchema } from '../lib/utils/schemaGenerator';
+import { DashboardManager } from '../components/magic/DashboardManager';
+import { fallbackCharts, fallbackDashboardConfig } from '../lib/constants/fallbackCharts';
+
+interface MagicChartsDashboardConfig extends Omit<DashboardConfig, 'components'> {
+  charts: (ChartConfig & { 
+    position: {
+      row: number;
+      column: number;
+      width: number;
+      height: number;
+      responsive?: {
+        [key in Breakpoint]?: {
+          row: number;
+          column: number;
+          width: number;
+          height: number;
+          visible?: boolean;
+        };
+      };
+    };
+    priority?: number;
+  })[];
+}
 
 export default function MagicCharts() {
-  const [configs, setConfigs] = useState<ChartConfig[]>([]);
+  const [config, setConfig] = useState<MagicChartsDashboardConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingStatus, setLoadingStatus] = useState('Initializing...');
+  const breakpoint = useBreakpoint(config?.layout.responsive?.breakpoints);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  
+  // For progressive loading
+  const [dashboardLayout, setDashboardLayout] = useState<any>(null);
+  const [loadedCharts, setLoadedCharts] = useState<ChartConfig[]>([]);
+  const [totalCharts, setTotalCharts] = useState(0);
+  const [chartIds, setChartIds] = useState<string[]>([]);
 
-  const fetchChartConfigs = async () => {
+  const fetchMagicChartsConfig = async () => {
     setIsLoading(true);
     setError(null);
+    setLoadingProgress(0);
+    setLoadedCharts([]);
+    setIsOfflineMode(false);
 
     try {
-      const response = await fetch('https://1374-191-23-82-122.ngrok-free.app/inteligence/dummy_charts', {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': '69420'
-        },
-        mode: 'cors',
-        credentials: 'omit'
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('API did not return JSON. Got: ' + contentType);
-      }
-
-      const data = await response.json();
+      // Multi-step loading process with progressive chart rendering
+      setLoadingStatus('Step 1: Fetching dashboard configuration...');
+      setLoadingProgress(10);
       
-      if (!Array.isArray(data.charts)) {
-        throw new Error('Invalid API response format. Expected "charts" array.');
+      // Fetch dashboard layout first
+      const dashboardConfig = await fetchDashboardConfig();
+      setDashboardLayout(dashboardConfig);
+      setLoadingProgress(20);
+      
+      // Create initial config with empty charts array
+      setConfig({
+        ...dashboardConfig,
+        charts: []
+      });
+      
+      setLoadingStatus('Step 2: Fetching charts count...');
+      setLoadingProgress(30);
+      
+      // Fetch chart count and IDs
+      const chartsCountData = await fetchChartsCount();
+      setTotalCharts(chartsCountData.count);
+      setChartIds(chartsCountData.chartIds);
+      setLoadingProgress(40);
+      
+      setLoadingStatus('Step 3: Loading charts progressively...');
+      
+      // Load charts one by one and update the UI as each loads
+      for (let i = 0; i < chartsCountData.chartIds.length; i++) {
+        const chartId = chartsCountData.chartIds[i];
+        setLoadingStatus(`Loading chart ${i + 1} of ${chartsCountData.count}: ${chartId}`);
+        
+        try {
+          const chartData = await fetchChartData(chartId);
+          
+          // Add the new chart to the loaded charts
+          setLoadedCharts(prev => [...prev, chartData]);
+          
+          // Update the config with the new chart
+          setConfig(prevConfig => {
+            if (!prevConfig) return null;
+            
+            // Ensure we don't add duplicate charts with the same ID
+            const existingChartIndex = prevConfig.charts.findIndex(c => c.id === chartData.id);
+            
+            if (existingChartIndex >= 0) {
+              // Replace existing chart
+              const updatedCharts = [...prevConfig.charts];
+              updatedCharts[existingChartIndex] = chartData;
+              return {
+                ...prevConfig,
+                charts: updatedCharts
+              };
+            } else {
+              // Add new chart
+              return {
+                ...prevConfig,
+                charts: [...prevConfig.charts, chartData]
+              };
+            }
+          });
+          
+          // Update progress
+          const progressIncrement = 50 / chartsCountData.count;
+          setLoadingProgress(40 + ((i + 1) * progressIncrement));
+        } catch (chartError) {
+          console.error(`Error loading chart ${chartId}:`, chartError);
+          // Continue with other charts even if one fails
+        }
       }
-
-      setConfigs(data.charts);
+      
+      setLoadingStatus('All charts loaded successfully');
+      setLoadingProgress(100);
+      
+      // We're done loading but we'll keep isLoading true until all charts are displayed
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch chart configurations';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch magic charts configuration';
       setError(errorMessage);
-      console.error('Error fetching chart configurations:', err);
-    } finally {
+      console.error('Error fetching magic charts configuration:', err);
+      
+      // Switch to offline mode with fallback charts
+      setIsOfflineMode(true);
+      setConfig({
+        ...fallbackDashboardConfig,
+        charts: fallbackCharts
+      });
+      
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchChartConfigs();
+    fetchMagicChartsConfig();
   }, []);
 
   const handleRefresh = () => {
-    fetchChartConfigs();
+    fetchMagicChartsConfig();
   };
 
   const generateDocumentation = () => {
-    const schema = {
-      $schema: "http://json-schema.org/draft-07/schema#",
-      title: "Chart Configuration Schema",
-      description: "Schema for configuring dynamic charts",
-      version: "1.0.0",
-      lastUpdated: new Date().toISOString(),
-      type: "object",
-      required: ["charts"],
-      properties: {
-        charts: {
-          type: "array",
-          items: {
-            type: "object",
-            required: ["id", "type", "data"],
-            properties: {
-              id: {
-                type: "string",
-                description: "Unique identifier for the chart"
-              },
-              type: {
-                type: "string",
-                enum: ["line", "area", "bar", "pie", "radar", "scatter", "matrix", "treemap", "gauge", "boxplot", "gantt", "waterfall"],
-                description: "Type of chart to render"
-              },
-              title: {
-                type: "string",
-                description: "Chart title"
-              },
-              description: {
-                type: "string",
-                description: "Chart description"
-              },
-              data: {
-                type: "array",
-                description: "Chart data (format depends on chart type)"
-              },
-              series: {
-                type: "array",
-                items: {
-                  type: "object",
-                  required: ["key", "color", "name"],
-                  properties: {
-                    key: {
-                      type: "string",
-                      description: "Data key to plot"
-                    },
-                    color: {
-                      type: "string",
-                      description: "Color for this series (hex code)"
-                    },
-                    name: {
-                      type: "string",
-                      description: "Display name for this series"
-                    }
-                  }
-                }
-              },
-              options: {
-                type: "object",
-                description: "Chart-specific options and base chart props",
-                properties: {
-                  width: {
-                    type: ["number", "string"],
-                    description: "Chart width"
-                  },
-                  height: {
-                    type: ["number", "string"],
-                    description: "Chart height"
-                  },
-                  margin: {
-                    type: "object",
-                    properties: {
-                      top: { type: "number" },
-                      right: { type: "number" },
-                      bottom: { type: "number" },
-                      left: { type: "number" }
-                    }
-                  },
-                  xAxis: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                      tickFormat: { type: "string", description: "Function string to format tick values" },
-                      tickRotation: { type: "number" },
-                      hideGridLines: { type: "boolean" },
-                      min: { type: "number" },
-                      max: { type: "number" }
-                    }
-                  },
-                  yAxis: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                      tickFormat: { type: "string", description: "Function string to format tick values" },
-                      tickRotation: { type: "number" },
-                      hideGridLines: { type: "boolean" },
-                      min: { type: "number" },
-                      max: { type: "number" }
-                    }
-                  },
-                  colors: {
-                    type: "object",
-                    properties: {
-                      scheme: { type: "string" },
-                      type: { type: "string", enum: ["sequential", "diverging", "categorical"] }
-                    }
-                  },
-                  theme: {
-                    type: "string",
-                    enum: ["light", "dark"]
-                  },
-                  enableGridX: { type: "boolean" },
-                  enableGridY: { type: "boolean" },
-                  enableLegend: { type: "boolean" },
-                  enableTooltip: { type: "boolean" },
-                  animate: { type: "boolean" },
-                  motionConfig: {
-                    type: "string",
-                    enum: ["default", "gentle", "wobbly", "stiff"]
-                  },
-                  legendPosition: {
-                    type: "string",
-                    enum: ["top", "right", "bottom", "left"]
-                  },
-                  tooltipFormat: {
-                    type: "string",
-                    description: "Function string to format tooltip values"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      definitions: {
-        lineChart: {
-          type: "object",
-          properties: {
-            showDots: { type: "boolean" },
-            smoothCurve: { type: "boolean" }
-          },
-          dataFormat: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["name"],
-              additionalProperties: { type: "number" }
-            },
-            example: [
-              { name: "Jan", value1: 100, value2: 200 }
-            ]
-          }
-        },
-        areaChart: {
-          type: "object",
-          properties: {
-            stacked: { type: "boolean" },
-            curve: { type: "string", enum: ["linear", "monotone", "step", "stepBefore", "stepAfter"] }
-          },
-          dataFormat: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["name"],
-              additionalProperties: { type: "number" }
-            }
-          }
-        },
-        barChart: {
-          type: "object",
-          properties: {
-            layout: { type: "string", enum: ["vertical", "horizontal"] },
-            barSize: { type: "number" },
-            stackOffset: { type: "string", enum: ["none", "expand", "wiggle", "silhouette"] }
-          },
-          dataFormat: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["name"],
-              additionalProperties: { type: "number" }
-            }
-          }
-        },
-        pieChart: {
-          type: "object",
-          properties: {
-            donut: { type: "boolean" },
-            padAngle: { type: "number" },
-            cornerRadius: { type: "number" },
-            sortByValue: { type: "boolean" },
-            innerRadius: { type: "number" },
-            activeOuterRadiusOffset: { type: "number" }
-          },
-          dataFormat: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["id", "value"],
-              properties: {
-                id: { type: "string" },
-                value: { type: "number" },
-                label: { type: "string" }
-              }
-            }
-          }
-        },
-        radarChart: {
-          type: "object",
-          properties: {
-            keys: { type: "array", items: { type: "string" } },
-            indexBy: { type: "string" },
-            maxValue: { type: ["number", "string"] },
-            curve: { type: "string", enum: ["linear", "catmullRom"] },
-            gridLevels: { type: "number" },
-            gridShape: { type: "string", enum: ["circular", "linear"] },
-            dotSize: { type: "number" },
-            dotBorderWidth: { type: "number" },
-            blendMode: { type: "string" }
-          },
-          dataFormat: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["metric"],
-              additionalProperties: { type: "number" }
-            }
-          }
-        },
-        scatterChart: {
-          type: "object",
-          properties: {
-            bubbleSize: {
-              type: "object",
-              properties: {
-                min: { type: "number" },
-                max: { type: "number" }
-              }
-            }
-          },
-          dataFormat: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["name", "data"],
-              properties: {
-                name: { type: "string" },
-                data: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    required: ["x", "y"],
-                    properties: {
-                      x: { type: "number" },
-                      y: { type: "number" },
-                      z: { type: "number" }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        matrixChart: {
-          type: "object",
-          properties: {
-            xLegend: { type: "string" },
-            yLegend: { type: "string" },
-            sizeVariation: { type: "number" },
-            forceSquare: { type: "boolean" },
-            padding: { type: "number" },
-            cellOpacity: { type: "number" }
-          },
-          dataFormat: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["id", "data"],
-              properties: {
-                id: { type: "string" },
-                data: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    required: ["x", "y"],
-                    properties: {
-                      x: { type: "string" },
-                      y: { type: "number" }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        treemapChart: {
-          type: "object",
-          properties: {
-            valueFormat: { type: "string" },
-            labelSkipSize: { type: "number" },
-            enableParentLabel: { type: "boolean" },
-            parentLabelSize: { type: "number" },
-            parentLabelPosition: { type: "string", enum: ["top", "center", "bottom"] },
-            colorMode: { type: "string", enum: ["parentInherit", "gradient"] }
-          },
-          dataFormat: {
-            type: "object",
-            required: ["name"],
-            properties: {
-              name: { type: "string" },
-              value: { type: "number" },
-              children: { type: "array", items: { $ref: "#/definitions/treemapChart/dataFormat" } }
-            }
-          }
-        },
-        gaugeChart: {
-          type: "object",
-          properties: {
-            value: { type: "number" },
-            min: { type: "number" },
-            max: { type: "number" },
-            format: { type: "string", description: "Function string to format values" },
-            colorScheme: {
-              type: "object",
-              properties: {
-                low: { type: "string" },
-                medium: { type: "string" },
-                high: { type: "string" }
-              }
-            }
-          }
-        },
-        boxPlotChart: {
-          type: "object",
-          properties: {
-            color: { type: "string" }
-          },
-          dataFormat: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["name", "min", "q1", "median", "q3", "max"],
-              properties: {
-                name: { type: "string" },
-                min: { type: "number" },
-                q1: { type: "number" },
-                median: { type: "number" },
-                q3: { type: "number" },
-                max: { type: "number" }
-              }
-            }
-          }
-        },
-        ganttChart: {
-          type: "object",
-          dataFormat: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["id", "name", "start", "end", "progress"],
-              properties: {
-                id: { type: "string" },
-                name: { type: "string" },
-                start: { type: "string", format: "date-time" },
-                end: { type: "string", format: "date-time" },
-                progress: { type: "number" },
-                dependencies: { type: "array", items: { type: "string" } }
-              }
-            }
-          }
-        },
-        waterfallChart: {
-          type: "object",
-          dataFormat: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["name", "value"],
-              properties: {
-                name: { type: "string" },
-                value: { type: "number" },
-                isTotal: { type: "boolean" }
-              }
-            }
-          }
-        }
-      },
-      examples: [
-        {
-          charts: [
-            {
-              id: "revenue-growth",
-              type: "line",
-              title: "Revenue Growth",
-              description: "Monthly revenue trends",
-              data: [
-                { name: "Jan", value: 1000 },
-                { name: "Feb", value: 1200 }
-              ],
-              series: [
-                {
-                  key: "value",
-                  name: "Revenue",
-                  color: "#8884d8"
-                }
-              ],
-              options: {
-                showDots: true,
-                smoothCurve: true,
-                xAxis: { title: "Month" },
-                yAxis: { title: "Revenue ($)" },
-                enableGridX: true,
-                enableGridY: true,
-                theme: "light"
-              }
-            }
-          ]
-        }
-      ]
-    };
-
+    if (!config) return;
+    
+    // Generate schema from current config
+    const schema = generateMagicChartsSchema(
+      { title: config.title, theme: config.theme, layout: config.layout },
+      { count: config.charts.length, chartIds: config.charts.map(c => c.id) },
+      config.charts[0] || {}
+    );
+    
+    // Download the schema
     const blob = new Blob([JSON.stringify(schema, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'chart-schema.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    saveAs(blob, 'magic-charts-api-schema.json');
+  };
+
+  const handleOpenConfigModal = () => {
+    setShowConfigModal(true);
+  };
+
+  const handleSaveConfig = (newConfig: MagicChartsDashboardConfig) => {
+    setConfig(newConfig);
+    setShowConfigModal(false);
+  };
+
+  // Render loading state with progressive chart display
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <PageHeader
+          title="Magic Charts"
+          description="AI-powered dynamic chart generation"
+          actions={
+            <div className="flex space-x-4">
+              <button
+                onClick={handleRefresh}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Charts
+              </button>
+            </div>
+          }
+        />
+        
+        <div className="bg-white rounded-xl shadow-card p-8 mb-6">
+          <div className="flex flex-col items-center justify-center">
+            <LoadingSpinner size="large" className="mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {loadingStatus}
+            </h3>
+            <div className="w-full max-w-md bg-gray-200 rounded-full h-2.5 mb-4">
+              <div 
+                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
+                style={{ width: `${loadingProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-sm text-gray-500">
+              Loaded {loadedCharts.length} of {totalCharts || '?'} charts
+            </p>
+          </div>
+        </div>
+        
+        {/* Progressive chart display during loading */}
+        {dashboardLayout && loadedCharts.length > 0 && (
+          <div className="w-full min-h-screen bg-gray-50">
+            <div className="max-w-[2400px] mx-auto">
+              <div className="p-4 mb-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-blue-700 font-medium">
+                  Loading in progress: Displaying {loadedCharts.length} of {totalCharts} charts
+                </p>
+                <p className="text-sm text-blue-600 mt-1">
+                  Charts are being loaded progressively. You can interact with loaded charts while others are being fetched.
+                </p>
+              </div>
+              
+              <div 
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${dashboardLayout.layout.columns}, minmax(0, 1fr))`,
+                  gap: `${dashboardLayout.layout.gap}px`,
+                  padding: `${dashboardLayout.layout.gap}px`,
+                }}
+                className="mt-6"
+              >
+                {loadedCharts.map((chart, index) => {
+                  const gridItemStyle = {
+                    gridColumn: `${chart.position.column} / span ${chart.position.width}`,
+                    gridRow: `${chart.position.row} / span ${chart.position.height}`,
+                  };
+                  
+                  // Use a combination of chart.id and index to ensure uniqueness
+                  const uniqueKey = `chart-${chart.id}-${index}`;
+                  
+                  return (
+                    <div
+                      key={uniqueKey}
+                      style={gridItemStyle}
+                      className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300"
+                    >
+                      <ChartRenderer config={chart} />
+                    </div>
+                  );
+                })}
+                
+                {/* Placeholder skeletons for charts not yet loaded */}
+                {chartIds.filter(id => !loadedCharts.some(c => c.id === id)).map((id, index) => {
+                  // Use a simple placeholder position if we don't know the actual position yet
+                  const placeholderPosition = {
+                    gridColumn: `${(index % dashboardLayout.layout.columns) + 1} / span 1`,
+                    gridRow: `${Math.floor(index / dashboardLayout.layout.columns) + loadedCharts.length + 1} / span 1`,
+                  };
+                  
+                  return (
+                    <div
+                      key={`placeholder-${id}-${index}`}
+                      style={placeholderPosition}
+                      className="bg-white rounded-xl shadow-card p-6 animate-pulse"
+                    >
+                      <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                      <div className="h-32 bg-gray-200 rounded mb-4"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </DashboardLayout>
+    );
+  }
+
+  if (error && !isOfflineMode) {
+    return (
+      <DashboardLayout>
+        <PageHeader
+          title="Magic Charts"
+          description="AI-powered dynamic chart generation"
+          actions={
+            <div className="flex space-x-4">
+              <button
+                onClick={handleRefresh}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Charts
+              </button>
+            </div>
+          }
+        />
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <p className="text-red-700">{error || "Failed to load configuration"}</p>
+          <p className="text-sm text-red-600 mt-2">
+            Please check that the API is returning data in the expected format.
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!config) {
+    return (
+      <DashboardLayout>
+        <PageHeader
+          title="Magic Charts"
+          description="AI-powered dynamic chart generation"
+        />
+        <div className="flex justify-center items-center h-64">
+          <LoadingSpinner size="large" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Calculate grid styles
+  const { layout, charts } = config;
+  const columns = layout.responsive?.columnThreshold?.[breakpoint] || layout.columns;
+  const gap = layout.responsive?.gapThreshold?.[breakpoint] || layout.gap;
+
+  const gridStyle = {
+    display: 'grid',
+    gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+    gridTemplateRows: layout.rowHeight || `repeat(${layout.rows}, minmax(100px, auto))`,
+    gap: `${gap}px`,
+    padding: `${gap}px`,
   };
 
   return (
     <DashboardLayout>
       <PageHeader
-        title="Magic Charts"
-        description="AI-powered dynamic chart generation"
+        title={config.title || "Magic Charts"}
+        description={isOfflineMode ? 
+          "Offline mode - displaying fallback charts" : 
+          "AI-powered dynamic chart generation"}
         actions={
           <div className="flex space-x-4">
             <button
@@ -506,6 +366,13 @@ export default function MagicCharts() {
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh Charts
+            </button>
+            <button
+              onClick={handleOpenConfigModal}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Manage Dashboard
             </button>
             <button
               onClick={generateDocumentation}
@@ -518,39 +385,71 @@ export default function MagicCharts() {
         }
       />
 
-      {isLoading && (
-        <div className="flex justify-center items-center h-64">
-          <LoadingSpinner size="large" />
+      {/* Dashboard Configuration Modal */}
+      {showConfigModal && (
+        <DashboardManager
+          config={config}
+          onSave={handleSaveConfig}
+          onClose={() => setShowConfigModal(false)}
+        />
+      )}
+
+      {/* Offline mode banner */}
+      {isOfflineMode && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-start">
+            <WifiOff className="h-5 w-5 text-amber-500 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-medium text-amber-800">
+                You're viewing charts in offline mode
+              </h3>
+              <p className="mt-1 text-sm text-amber-700">
+                We couldn't connect to the Magic Charts API. Displaying fallback charts instead.
+                Click "Refresh Charts" to try connecting again.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
-          <p className="text-red-700">{error}</p>
-          <p className="text-sm text-red-600 mt-2">
-            Make sure the API endpoint is accessible and CORS is properly configured.
-          </p>
-        </div>
-      )}
+      <div className="w-full min-h-screen bg-gray-50">
+        <div className="max-w-[2400px] mx-auto">
+          <div style={gridStyle} className="mt-6">
+            {charts
+              .filter(chart => {
+                // Check for responsive visibility
+                const position = chart.position.responsive?.[breakpoint];
+                return position?.visible !== false;
+              })
+              .map((chart, index) => {
+                // Get the position for current breakpoint
+                const gridItemStyle = getGridItemStyle(
+                  {
+                    id: chart.id,
+                    type: chart.type,
+                    position: chart.position,
+                    priority: chart.priority
+                  },
+                  breakpoint,
+                  columns
+                );
 
-      {!isLoading && !error && configs.length === 0 && (
-        <div className="bg-white rounded-xl shadow-card p-8 text-center">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No charts available
-          </h3>
-          <p className="text-gray-500 mb-4">
-            No chart configurations were returned from the API. Try refreshing or check the API endpoint.
-          </p>
-        </div>
-      )}
+                // Use a combination of chart.id and index to ensure uniqueness
+                const uniqueKey = `chart-${chart.id}-${index}`;
 
-      {!isLoading && !error && configs.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {configs.map((config) => (
-            <ChartRenderer key={config.id} config={config} />
-          ))}
+                return (
+                  <div
+                    key={uniqueKey}
+                    style={gridItemStyle}
+                    className="bg-white rounded-xl shadow-card hover:shadow-card-hover transition-all duration-300"
+                  >
+                    <ChartRenderer config={chart} />
+                  </div>
+                );
+              })}
+          </div>
         </div>
-      )}
+      </div>
     </DashboardLayout>
   );
 }

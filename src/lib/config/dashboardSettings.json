@@ -1,0 +1,32 @@
+{
+  "title": "Performance Overview",
+  "theme": "light",
+  "layout": {
+    "rows": 12,
+    "columns": 12,
+    "gap": 16,
+    "rowHeight": "auto",
+    "responsive": {
+      "breakpoints": {
+        "sm": 576,
+        "md": 768,
+        "lg": 992,
+        "xl": 1200
+      },
+      "behavior": "reflow",
+      "columnThreshold": {
+        "sm": 4,
+        "md": 6,
+        "lg": 8,
+        "xl": 12
+      },
+      "gapThreshold": {
+        "sm": 8,
+        "md": 12,
+        "lg": 16,
+        "xl": 16
+      },
+      "priorityLevels": 3
+    }
+  }
+}

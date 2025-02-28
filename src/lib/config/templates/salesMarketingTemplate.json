@@ -1,0 +1,303 @@
+{
+    "title": "Sales & Marketing Dashboard",
+    "description": "A comprehensive dashboard for tracking sales performance and marketing effectiveness",
+    "theme": "light",
+    "layout": {
+        "rows": 7,
+        "columns": 12,
+        "gap": 12,
+        "rowHeight": 100,
+        "responsive": {
+            "breakpoints": {
+                "sm": 576,
+                "md": 768,
+                "lg": 992,
+                "xl": 1200
+            },
+            "behavior": "reflow",
+            "columnThreshold": {
+                "sm": 4,
+                "md": 8,
+                "lg": 12,
+                "xl": 12
+            },
+            "gapThreshold": {
+                "sm": 8,
+                "md": 10,
+                "lg": 12,
+                "xl": 12
+            },
+            "priorityLevels": 3
+        }
+    },
+    "components": [
+        {
+            "id": "sales-total",
+            "type": "Card",
+            "title": "Total Sales",
+            "position": {
+                "row": 1,
+                "column": 1,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 1,
+            "options": {
+                "format": "currency",
+                "showChange": true,
+                "changeType": "percentage",
+                "icon": "shoppingCart",
+                "color": "primary"
+            }
+        },
+        {
+            "id": "conversion-rate",
+            "type": "Card",
+            "title": "Conversion Rate",
+            "position": {
+                "row": 1,
+                "column": 4,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 1,
+            "options": {
+                "format": "percentage",
+                "decimals": 2,
+                "showChange": true,
+                "changeType": "percentage",
+                "icon": "arrowsRightLeft",
+                "color": "success"
+            }
+        },
+        {
+            "id": "cac",
+            "type": "Card",
+            "title": "Customer Acquisition Cost",
+            "position": {
+                "row": 1,
+                "column": 7,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 2,
+            "options": {
+                "format": "currency",
+                "showChange": true,
+                "changeType": "percentage",
+                "icon": "userPlus",
+                "color": "warning"
+            }
+        },
+        {
+            "id": "ltv",
+            "type": "Card",
+            "title": "Customer Lifetime Value",
+            "position": {
+                "row": 1,
+                "column": 10,
+                "width": 3,
+                "height": 1
+            },
+            "priority": 2,
+            "options": {
+                "format": "currency",
+                "showChange": true,
+                "changeType": "percentage",
+                "icon": "users",
+                "color": "info"
+            }
+        },
+        {
+            "id": "sales-trend",
+            "type": "LineChart",
+            "title": "Sales Trend with Targets",
+            "position": {
+                "row": 2,
+                "column": 1,
+                "width": 12,
+                "height": 2
+            },
+            "priority": 1,
+            "options": {
+                "enableGridY": true,
+                "enableLegend": true,
+                "legendPosition": "bottom",
+                "enableTooltip": true,
+                "showDots": true,
+                "smoothCurve": false,
+                "xAxis": {
+                    "title": "Month"
+                },
+                "yAxis": {
+                    "title": "Revenue"
+                },
+                "margin": {
+                    "top": 20,
+                    "right": 20,
+                    "bottom": 50,
+                    "left": 60
+                }
+            }
+        },
+        {
+            "id": "channel-performance",
+            "type": "BarChart",
+            "title": "Channel Performance",
+            "position": {
+                "row": 4,
+                "column": 1,
+                "width": 6,
+                "height": 2
+            },
+            "priority": 1,
+            "options": {
+                "layout": "horizontal",
+                "enableLegend": true,
+                "legendPosition": "bottom",
+                "enableGridX": true,
+                "barSize": 20,
+                "margin": {
+                    "top": 20,
+                    "right": 20,
+                    "bottom": 50,
+                    "left": 100
+                }
+            }
+        },
+        {
+            "id": "funnel-analysis",
+            "type": "FunnelChart",
+            "title": "Conversion Funnel",
+            "position": {
+                "row": 4,
+                "column": 7,
+                "width": 6,
+                "height": 2
+            },
+            "priority": 1,
+            "options": {
+                "direction": "vertical",
+                "interpolation": "smooth",
+                "valueFormat": "number",
+                "enableLabels": true,
+                "labelPosition": "inside",
+                "margin": {
+                    "top": 20,
+                    "right": 20,
+                    "bottom": 20,
+                    "left": 20
+                }
+            }
+        },
+        {
+            "id": "product-mix",
+            "type": "PieChart",
+            "title": "Product Mix",
+            "position": {
+                "row": 6,
+                "column": 1,
+                "width": 4,
+                "height": 2
+            },
+            "priority": 2,
+            "options": {
+                "innerRadius": 0,
+                "padAngle": 0.5,
+                "cornerRadius": 3,
+                "enableLegend": true,
+                "legendPosition": "bottom"
+            }
+        },
+        {
+            "id": "geographic-performance",
+            "type": "HeatmapChart",
+            "title": "Geographic Performance",
+            "position": {
+                "row": 6,
+                "column": 5,
+                "width": 4,
+                "height": 2
+            },
+            "priority": 2,
+            "options": {
+                "colorScale": {
+                    "type": "sequential",
+                    "scheme": "blues"
+                },
+                "enableLabels": true,
+                "labelTextColor": "inherit:darker(1.4)",
+                "cellSize": 30,
+                "cellPadding": 2
+            }
+        },
+        {
+            "id": "customer-segments",
+            "type": "TreemapChart",
+            "title": "Customer Segments",
+            "position": {
+                "row": 6,
+                "column": 9,
+                "width": 4,
+                "height": 2
+            },
+            "priority": 2,
+            "options": {
+                "enableLabels": true,
+                "labelSkipSize": 10,
+                "padding": 4,
+                "innerPadding": 1,
+                "colorBy": "id",
+                "colorScale": {
+                    "type": "category10"
+                }
+            }
+        }
+    ],
+    "filters": [
+        {
+            "id": "date-range",
+            "type": "date",
+            "label": "Date Range",
+            "default": "last90days",
+            "position": {
+                "area": "topbar",
+                "alignment": "right"
+            },
+            "affectsComponents": [
+                "all"
+            ]
+        },
+        {
+            "id": "product-filter",
+            "type": "dropdown",
+            "label": "Product",
+            "default": "all",
+            "position": {
+                "area": "topbar",
+                "alignment": "right"
+            },
+            "affectsComponents": [
+                "sales-trend",
+                "channel-performance",
+                "funnel-analysis",
+                "product-mix"
+            ]
+        },
+        {
+            "id": "region-filter",
+            "type": "dropdown",
+            "label": "Region",
+            "default": "all",
+            "position": {
+                "area": "topbar",
+                "alignment": "right"
+            },
+            "affectsComponents": [
+                "geographic-performance",
+                "sales-trend",
+                "customer-segments"
+            ]
+        }
+    ]
+}

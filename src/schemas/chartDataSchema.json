@@ -1,0 +1,289 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Chart Data Schema",
+  "description": "Schema for individual chart data API response",
+  "type": "object",
+  "required": ["id", "type", "position"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the chart"
+    },
+    "type": {
+      "type": "string",
+      "description": "Type of chart component to render",
+      "enum": [
+        "Card",
+        "LineChart",
+        "BarChart",
+        "PieChart",
+        "AreaChart",
+        "ScatterChart",
+        "RadarChart",
+        "HeatmapChart",
+        "TreemapChart",
+        "FunnelChart",
+        "GanttChart",
+        "BoxPlotChart",
+        "GaugeChart",
+        "WaterfallChart",
+        "MatrixChart"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "description": "Chart title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional chart description"
+    },
+    "position": {
+      "type": "object",
+      "required": ["row", "column", "width", "height"],
+      "properties": {
+        "row": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Starting row (1-based)"
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Starting column (1-based)"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of columns to span"
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of rows to span"
+        },
+        "responsive": {
+          "type": "object",
+          "description": "Responsive layout overrides",
+          "properties": {
+            "sm": {
+              "type": "object",
+              "properties": {
+                "row": { "type": "integer", "minimum": 1 },
+                "column": { "type": "integer", "minimum": 1 },
+                "width": { "type": "integer", "minimum": 1 },
+                "height": { "type": "integer", "minimum": 1 },
+                "visible": { "type": "boolean" }
+              }
+            },
+            "md": {
+              "type": "object",
+              "properties": {
+                "row": { "type": "integer", "minimum": 1 },
+                "column": { "type": "integer", "minimum": 1 },
+                "width": { "type": "integer", "minimum": 1 },
+                "height": { "type": "integer", "minimum": 1 },
+                "visible": { "type": "boolean" }
+              }
+            },
+            "lg": {
+              "type": "object",
+              "properties": {
+                "row": { "type": "integer", "minimum": 1 },
+                "column": { "type": "integer", "minimum": 1 },
+                "width": { "type": "integer", "minimum": 1 },
+                "height": { "type": "integer", "minimum": 1 },
+                "visible": { "type": "boolean" }
+              }
+            },
+            "xl": {
+              "type": "object",
+              "properties": {
+                "row": { "type": "integer", "minimum": 1 },
+                "column": { "type": "integer", "minimum": 1 },
+                "width": { "type": "integer", "minimum": 1 },
+                "height": { "type": "integer", "minimum": 1 },
+                "visible": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "priority": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Component priority for responsive behavior (1 = highest)"
+    },
+    "data": {
+      "type": "object",
+      "description": "Chart data and configuration",
+      "properties": {
+        "data": {
+          "type": "array",
+          "description": "Data points for the chart",
+          "items": {
+            "type": "object"
+          }
+        },
+        "series": {
+          "type": "array",
+          "description": "Series configuration for multi-series charts",
+          "items": {
+            "type": "object",
+            "required": ["key", "color", "name"],
+            "properties": {
+              "key": {
+                "type": "string",
+                "description": "Data key for this series"
+              },
+              "color": {
+                "type": "string",
+                "description": "Color for this series (hex code)"
+              },
+              "name": {
+                "type": "string",
+                "description": "Display name for this series"
+              }
+            }
+          }
+        },
+        "value": {
+          "type": ["string", "number"],
+          "description": "Value for KPI cards"
+        },
+        "change": {
+          "type": "number",
+          "description": "Change percentage for KPI cards"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Icon name for KPI cards (from Lucide React)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description text for KPI cards"
+        }
+      }
+    },
+    "options": {
+      "type": "object",
+      "description": "Chart-specific options",
+      "properties": {
+        "showDots": { "type": "boolean" },
+        "smoothCurve": { "type": "boolean" },
+        "stacked": { "type": "boolean" },
+        "layout": { "type": "string", "enum": ["vertical", "horizontal"] },
+        "barSize": { "type": "integer" },
+        "donut": { "type": "boolean" },
+        "innerRadius": { "type": "number" },
+        "padAngle": { "type": "number" },
+        "cornerRadius": { "type": "number" },
+        "enableGridX": { "type": "boolean" },
+        "enableGridY": { "type": "boolean" },
+        "enableLegend": { "type": "boolean" },
+        "enableTooltip": { "type": "boolean" },
+        "animate": { "type": "boolean" },
+        "legendPosition": { "type": "string", "enum": ["top", "right", "bottom", "left"] },
+        "xAxis": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "tickFormat": { "type": "string" },
+            "tickRotation": { "type": "integer" },
+            "min": { "type": "number" },
+            "max": { "type": "number" }
+          }
+        },
+        "yAxis": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "tickFormat": { "type": "string" },
+            "tickRotation": { "type": "integer" },
+            "min": { "type": "number" },
+            "max": { "type": "number" }
+          }
+        },
+        "margin": {
+          "type": "object",
+          "properties": {
+            "top": { "type": "integer" },
+            "right": { "type": "integer" },
+            "bottom": { "type": "integer" },
+            "left": { "type": "integer" }
+          }
+        },
+        "colors": {
+          "type": ["object", "string"],
+          "description": "Color scheme or specific colors"
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark"]
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "id": "total-revenue",
+      "type": "Card",
+      "title": "Total Revenue",
+      "position": {
+        "row": 1,
+        "column": 1,
+        "width": 3,
+        "height": 1,
+        "responsive": {
+          "sm": { "row": 1, "column": 1, "width": 4, "height": 1 },
+          "md": { "row": 1, "column": 1, "width": 3, "height": 1 }
+        }
+      },
+      "priority": 1,
+      "data": {
+        "value": "$48,234",
+        "change": 12,
+        "icon": "DollarSign",
+        "description": "vs last month"
+      }
+    },
+    {
+      "id": "revenue-trend",
+      "type": "LineChart",
+      "title": "Revenue Trend",
+      "position": {
+        "row": 2,
+        "column": 1,
+        "width": 8,
+        "height": 3,
+        "responsive": {
+          "sm": { "row": 5, "column": 1, "width": 4, "height": 3 },
+          "md": { "row": 2, "column": 1, "width": 8, "height": 3 }
+        }
+      },
+      "priority": 1,
+      "data": {
+        "data": [
+          { "name": "Jan", "value1": 4000, "value2": 2400, "value3": 1800 },
+          { "name": "Feb", "value1": 3000, "value2": 1398, "value3": 2800 },
+          { "name": "Mar", "value1": 2000, "value2": 9800, "value3": 2200 },
+          { "name": "Apr", "value1": 2780, "value2": 3908, "value3": 2000 },
+          { "name": "May", "value1": 1890, "value2": 4800, "value3": 2181 },
+          { "name": "Jun", "value1": 2390, "value2": 3800, "value3": 2500 }
+        ],
+        "series": [
+          { "key": "value1", "color": "#8884d8", "name": "Revenue" },
+          { "key": "value2", "color": "#82ca9d", "name": "Profit" },
+          { "key": "value3", "color": "#ffc658", "name": "Cost" }
+        ]
+      },
+      "options": {
+        "showDots": true,
+        "smoothCurve": true,
+        "xAxis": { "title": "Month" },
+        "yAxis": { "title": "Amount ($)" }
+      }
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Charts Count Schema",
+  "description": "Schema for the charts count API response",
+  "type": "object",
+  "required": ["count", "chartIds"],
+  "properties": {
+    "count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Total number of charts to be loaded"
+    },
+    "chartIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of chart IDs to be loaded"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional metadata about the charts",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Categories of charts included"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the charts were last updated"
+        }
+      }
+    }
+  },
+  "example": {
+    "count": 6,
+    "chartIds": [
+      "total-revenue",
+      "active-users",
+      "engagement-rate",
+      "growth-rate",
+      "revenue-trend",
+      "top-products"
+    ],
+    "metadata": {
+      "categories": ["kpi", "trend", "comparison"],
+      "lastUpdated": "2025-02-21T19:37:45Z"
+    }
+  }
+}

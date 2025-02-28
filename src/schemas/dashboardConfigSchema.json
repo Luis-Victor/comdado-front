@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dashboard Configuration Schema",
+  "description": "Schema for the dashboard configuration API response",
+  "type": "object",
+  "required": ["title", "theme", "layout"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Dashboard title"
+    },
+    "theme": {
+      "type": "string",
+      "enum": ["light", "dark"],
+      "description": "Dashboard theme"
+    },
+    "layout": {
+      "type": "object",
+      "required": ["rows", "columns", "gap"],
+      "properties": {
+        "rows": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of rows in the dashboard grid"
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of columns in the dashboard grid"
+        },
+        "gap": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Gap between grid items in pixels"
+        },
+        "rowHeight": {
+          "type": ["string", "integer"],
+          "description": "Height of each row (pixels or 'auto')"
+        },
+        "responsive": {
+          "type": "object",
+          "properties": {
+            "breakpoints": {
+              "type": "object",
+              "properties": {
+                "sm": { "type": "integer" },
+                "md": { "type": "integer" },
+                "lg": { "type": "integer" },
+                "xl": { "type": "integer" }
+              }
+            },
+            "behavior": {
+              "type": "string",
+              "enum": ["reflow", "stack", "scale", "hide-optional"]
+            },
+            "columnThreshold": {
+              "type": "object",
+              "properties": {
+                "sm": { "type": "integer" },
+                "md": { "type": "integer" },
+                "lg": { "type": "integer" },
+                "xl": { "type": "integer" }
+              }
+            },
+            "gapThreshold": {
+              "type": "object",
+              "properties": {
+                "sm": { "type": "integer" },
+                "md": { "type": "integer" },
+                "lg": { "type": "integer" },
+                "xl": { "type": "integer" }
+              }
+            },
+            "priorityLevels": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "example": {
+    "title": "Performance Overview",
+    "theme": "light",
+    "layout": {
+      "rows": 12,
+      "columns": 12,
+      "gap": 16,
+      "rowHeight": "auto",
+      "responsive": {
+        "breakpoints": {
+          "sm": 576,
+          "md": 768,
+          "lg": 992,
+          "xl": 1200
+        },
+        "behavior": "reflow",
+        "columnThreshold": {
+          "sm": 4,
+          "md": 6,
+          "lg": 8,
+          "xl": 12
+        },
+        "gapThreshold": {
+          "sm": 8,
+          "md": 12,
+          "lg": 16,
+          "xl": 16
+        },
+        "priorityLevels": 3
+      }
+    }
+  }
+}
