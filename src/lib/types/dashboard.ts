@@ -73,6 +73,23 @@ export interface ComponentPosition {
   responsive?: ResponsiveLayout;
 }
 
+// Define helper interfaces for the additional filtering properties
+export interface LayoutOptions {
+  type?: string;
+  display?: string;
+  [otherOptions: string]: any;
+}
+
+export interface StyleOptions {
+  type?: string;
+  [otherOptions: string]: any;
+}
+
+export interface ChartOptions {
+  type?: string;
+  [otherOptions: string]: any;
+}
+
 export interface DashboardComponent {
   id: string;
   type: string;

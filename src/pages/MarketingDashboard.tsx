@@ -1,84 +1,116 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card } from '../components/Card';
 import { BarChart } from '../components/charts/BarChart';
-import { LineChart } from '../components/charts/LineChart';
 import { PieChart } from '../components/charts/PieChart';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { getMarketingPerformance } from '../lib/mockData/queries';
-import { format, subMonths, parseISO } from 'date-fns';
+import { getMarketingCampaigns } from '../lib/mockData/queries';
+import { format, parseISO, isWithinInterval } from 'date-fns';
 import { DatePicker } from '../components/filters/DatePicker';
 import { FilterDropdown } from '../components/filters/FilterDropdown';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Database } from 'lucide-react';
+import { MarketingTable } from '../components/common/MarketingTable';
+
+interface MarketingCampaign {
+  id: string;
+  campaign: string;
+  channel: string;
+  date: string;
+  status: string;
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  spent: number;
+  revenue: number;
+}
 
 export default function MarketingDashboard() {
-  // State for filters
+  const [showRawData, setShowRawData] = useState(false);
+  const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
+  const [filteredCampaigns, setFilteredCampaigns] = useState<MarketingCampaign[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [dateRange, setDateRange] = useState<[string, string]>([
-    format(subMonths(new Date(), 6), 'yyyy-MM-dd'),
-    format(new Date(), 'yyyy-MM-dd')
+    format(new Date(2024, 0, 1), 'yyyy-MM-dd'), // Jan 1, 2024
+    format(new Date(2024, 3, 30), 'yyyy-MM-dd')  // Apr 30, 2024
   ]);
-  const [channelFilter, setChannelFilter] = useState<string[]>([]);
-  
-  // State for data
-  const [marketingData, setMarketingData] = useState<any[]>([]);
-  const [filteredData, setFilteredData] = useState<any[]>([]);
-  
-  // Loading state
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Load initial data
+
   useEffect(() => {
     loadMarketingData();
-  }, [dateRange]);
-  
-  // Apply filters when they change
+  }, []);
+
   useEffect(() => {
-    if (marketingData.length > 0) {
-      applyFilters();
-    }
-  }, [channelFilter, marketingData]);
-  
-  const loadMarketingData = async () => {
+    applyFilters();
+  }, [campaigns, selectedChannel, selectedStatus, dateRange]);
+
+  const loadMarketingData = () => {
     setIsLoading(true);
-    
     try {
-      // Get marketing performance data
-      const performance = getMarketingPerformance(dateRange[0], dateRange[1]);
-      setMarketingData(performance);
-      setFilteredData(performance);
-      
+      const data = getMarketingCampaigns();
+      setCampaigns(data);
+      setFilteredCampaigns(data);
     } catch (error) {
       console.error('Error loading marketing data:', error);
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   const applyFilters = () => {
-    // Apply channel filter
-    if (channelFilter.length > 0) {
-      const filtered = marketingData.filter(channel => 
-        channelFilter.includes(channel.channel)
-      );
-      setFilteredData(filtered);
-    } else {
-      setFilteredData(marketingData);
+    let filtered = [...campaigns];
+
+    // Apply date range filter
+    filtered = filtered.filter(campaign => {
+      const campaignDate = parseISO(campaign.date);
+      return isWithinInterval(campaignDate, {
+        start: parseISO(dateRange[0]),
+        end: parseISO(dateRange[1])
+      });
+    });
+
+    if (selectedChannel !== 'all') {
+      filtered = filtered.filter(campaign => campaign.channel === selectedChannel);
     }
+
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(campaign => campaign.status === selectedStatus);
+    }
+
+    setFilteredCampaigns(filtered);
   };
+
+  const channels = useMemo(() => 
+    Array.from(new Set(campaigns.map((c: MarketingCampaign) => c.channel))),
+    [campaigns]
+  );
   
-  const handleRefresh = () => {
-    loadMarketingData();
+  const statuses = useMemo(() => 
+    Array.from(new Set(campaigns.map((c: MarketingCampaign) => c.status))),
+    [campaigns]
+  );
+
+  const calculateKPIs = () => {
+    const totalImpressions = filteredCampaigns.reduce((sum, c) => sum + c.impressions, 0);
+    const totalClicks = filteredCampaigns.reduce((sum, c) => sum + c.clicks, 0);
+    const totalConversions = filteredCampaigns.reduce((sum, c) => sum + c.conversions, 0);
+    const totalSpent = filteredCampaigns.reduce((sum, c) => sum + c.spent, 0);
+    const totalRevenue = filteredCampaigns.reduce((sum, c) => sum + c.revenue, 0);
+
+    return {
+      totalImpressions: totalImpressions.toLocaleString(),
+      totalClicks: totalClicks.toLocaleString(),
+      avgCTR: ((totalClicks / totalImpressions) * 100).toFixed(2) + '%',
+      totalConversions: totalConversions.toLocaleString(),
+      totalSpent: totalSpent.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+      totalRevenue: totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+      ROI: (((totalRevenue - totalSpent) / totalSpent) * 100).toFixed(2) + '%'
+    };
   };
-  
-  const handleDateRangeChange = (startDate: string, endDate: string) => {
-    setDateRange([startDate, endDate]);
-  };
-  
-  const handleChannelFilterChange = (channels: string[]) => {
-    setChannelFilter(channels);
-  };
-  
+
+  const kpis = useMemo(() => calculateKPIs(), [filteredCampaigns]);
+
   // Format currency
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -88,81 +120,145 @@ export default function MarketingDashboard() {
       maximumFractionDigits: 0
     }).format(value);
   };
-  
+
   // Format percentage
   const formatPercentage = (value: number) => {
     return `${(value * 100).toFixed(2)}%`;
   };
-  
-  // Calculate totals
-  const calculateTotals = () => {
-    if (filteredData.length === 0) return null;
-    
-    return {
-      impressions: filteredData.reduce((sum, channel) => sum + channel.impressions, 0),
-      clicks: filteredData.reduce((sum, channel) => sum + channel.clicks, 0),
-      conversions: filteredData.reduce((sum, channel) => sum + channel.conversions, 0),
-      spent: filteredData.reduce((sum, channel) => sum + channel.spent, 0),
-      ctr: filteredData.reduce((sum, channel) => sum + channel.clicks, 0) / 
-           filteredData.reduce((sum, channel) => sum + channel.impressions, 0),
-      conversionRate: filteredData.reduce((sum, channel) => sum + channel.conversions, 0) / 
-                     filteredData.reduce((sum, channel) => sum + channel.clicks, 0),
-      cpa: filteredData.reduce((sum, channel) => sum + channel.spent, 0) / 
-           filteredData.reduce((sum, channel) => sum + channel.conversions, 0)
-    };
+
+  // Format number with at most 2 decimal places
+  const formatNumber = (value: number) => {
+    return Number(value.toFixed(2));
   };
-  
-  const totals = calculateTotals();
-  
-  // Get available channels for filter
-  const channelOptions = Array.from(new Set(marketingData.map(channel => channel.channel)))
-    .map(channel => ({ value: channel, label: channel.charAt(0).toUpperCase() + channel.slice(1) }));
-  
+
+  // Memoize channel performance data
+  const channelPerformanceData = useMemo(() => 
+    channels
+      .map(channel => {
+        const channelCampaigns = filteredCampaigns.filter(c => c.channel === channel);
+        const campaignCount = channelCampaigns.length;
+        
+        if (campaignCount === 0) return undefined;
+        
+        const avgImpressions = channelCampaigns.reduce((sum, c) => sum + c.impressions, 0) / campaignCount;
+        const avgClicks = channelCampaigns.reduce((sum, c) => sum + c.clicks, 0) / campaignCount;
+        const avgConversions = channelCampaigns.reduce((sum, c) => sum + c.conversions, 0) / campaignCount;
+        
+        return {
+          name: channel.charAt(0).toUpperCase() + channel.slice(1),
+          impressions: formatNumber(avgImpressions / 1000), // Convert to thousands for better display
+          clicks: formatNumber(avgClicks),
+          conversions: formatNumber(avgConversions)
+        };
+      })
+      .filter((item): item is { name: string; impressions: number; clicks: number; conversions: number } => 
+        item !== undefined
+      ),
+    [filteredCampaigns, channels]
+  );
+
+  // Memoize engagement rates data
+  const engagementRatesData = useMemo(() => 
+    channels
+      .map(channel => {
+        const channelCampaigns = filteredCampaigns.filter(c => c.channel === channel);
+        const campaignCount = channelCampaigns.length;
+        
+        if (campaignCount === 0) return undefined;
+        
+        const totalImpressions = channelCampaigns.reduce((sum, c) => sum + c.impressions, 0);
+        const totalClicks = channelCampaigns.reduce((sum, c) => sum + c.clicks, 0);
+        const totalConversions = channelCampaigns.reduce((sum, c) => sum + c.conversions, 0);
+        
+        const avgCTR = (totalClicks / totalImpressions) * 100;
+        const avgConvRate = (totalConversions / totalClicks) * 100;
+        
+        return {
+          name: channel.charAt(0).toUpperCase() + channel.slice(1),
+          ctr: formatNumber(avgCTR),
+          conversionRate: formatNumber(avgConvRate)
+        };
+      })
+      .filter((item): item is { name: string; ctr: number; conversionRate: number } => 
+        item !== undefined
+      ),
+    [filteredCampaigns, channels]
+  );
+
+  // Memoize cost analysis data
+  const costAnalysisData = useMemo(() => 
+    channels
+      .map(channel => {
+        const channelCampaigns = filteredCampaigns.filter(c => c.channel === channel);
+        const campaignCount = channelCampaigns.length;
+        
+        if (campaignCount === 0) return undefined;
+        
+        const totalSpent = channelCampaigns.reduce((sum, c) => sum + c.spent, 0);
+        const totalConversions = channelCampaigns.reduce((sum, c) => sum + c.conversions, 0);
+        
+        const avgSpent = totalSpent / campaignCount;
+        const avgCPA = totalConversions > 0 ? totalSpent / totalConversions : 0;
+        
+        return {
+          name: channel.charAt(0).toUpperCase() + channel.slice(1),
+          spent: formatNumber(avgSpent),
+          cpa: formatNumber(avgCPA)
+        };
+      })
+      .filter((item): item is { name: string; spent: number; cpa: number } => 
+        item !== undefined
+      ),
+    [filteredCampaigns, channels]
+  );
+
+  // Memoize budget allocation data
+  const budgetAllocationData = useMemo(() => 
+    channels
+      .map(channel => {
+        const channelCampaigns = filteredCampaigns.filter(c => c.channel === channel);
+        const totalSpent = channelCampaigns.reduce((sum, c) => sum + c.spent, 0);
+        
+        if (channelCampaigns.length === 0) return undefined;
+        
+        return {
+          id: channel,
+          label: channel.charAt(0).toUpperCase() + channel.slice(1),
+          value: Number(totalSpent.toFixed(2)) // Round to 2 decimal places
+        };
+      })
+      .filter((item): item is { id: string; label: string; value: number } => 
+        item !== undefined
+      ),
+    [filteredCampaigns, channels]
+  );
+
   return (
     <DashboardLayout>
       <PageHeader
         title="Marketing Dashboard"
-        description={`Campaign performance from ${format(parseISO(dateRange[0]), 'MMM d, yyyy')} to ${format(parseISO(dateRange[1]), 'MMM d, yyyy')}`}
+        description="Track and analyze marketing campaign performance"
         actions={
-          <button
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setShowRawData(!showRawData)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <Database className="h-4 w-4 mr-2" />
+              {showRawData ? 'Hide Raw Data' : 'Show Raw Data'}
+            </button>
+            <button
+              onClick={loadMarketingData}
+              disabled={isLoading}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         }
       />
-      
-      {/* Filters Section */}
-      <div className="bg-white rounded-xl shadow-card p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <DatePicker
-              startDate={dateRange[0]}
-              endDate={dateRange[1]}
-              onStartDateChange={(date) => handleDateRangeChange(date, dateRange[1])}
-              onEndDateChange={(date) => handleDateRangeChange(dateRange[0], date)}
-              label="Campaign Date Range"
-            />
-          </div>
-          
-          <div>
-            <FilterDropdown
-              options={channelOptions}
-              value={channelFilter}
-              onChange={handleChannelFilterChange}
-              label="Marketing Channels"
-              placeholder="All Channels"
-              multiple={true}
-            />
-          </div>
-        </div>
-      </div>
-      
-      {/* Loading Overlay */}
+
       <div className="relative">
         {isLoading && (
           <div className="absolute inset-0 bg-white bg-opacity-70 z-10 flex items-center justify-center">
@@ -172,220 +268,172 @@ export default function MarketingDashboard() {
             </div>
           </div>
         )}
-        
+
         {/* KPI Cards */}
-        {totals && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <Card
-              title="Total Impressions"
-              value={totals.impressions.toLocaleString()}
-              icon="Eye"
-              description="campaign views"
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <Card
+            title="Total Impressions"
+            value={kpis.totalImpressions}
+            icon="Eye"
+            description="campaign views"
+          />
+          <Card
+            title="Total Clicks"
+            value={kpis.totalClicks}
+            icon="MousePointer"
+            description={`CTR: ${kpis.avgCTR}`}
+          />
+          <Card
+            title="Total Revenue"
+            value={kpis.totalRevenue}
+            icon="DollarSign"
+            description={`Spent: ${kpis.totalSpent}`}
+          />
+          <Card
+            title="ROI"
+            value={kpis.ROI}
+            icon="TrendingUp"
+            description="Return on Investment"
+          />
+        </div>
+
+        {/* Filters Section */}
+        <div className="bg-white rounded-xl shadow-card p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Filters</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <DatePicker
+              startDate={dateRange[0]}
+              endDate={dateRange[1]}
+              onStartDateChange={(date) => setDateRange([date, dateRange[1]])}
+              onEndDateChange={(date) => setDateRange([dateRange[0], date])}
+              label="Campaign Date Range"
+              minDate="2024-01-01"
+              maxDate="2024-04-30"
             />
-            
-            <Card
-              title="Total Clicks"
-              value={totals.clicks.toLocaleString()}
-              icon="MousePointer"
-              description={`CTR: ${formatPercentage(totals.ctr)}`}
-            />
-            
-            <Card
-              title="Conversions"
-              value={totals.conversions.toLocaleString()}
-              icon="CheckCircle"
-              description={`Conv. Rate: ${formatPercentage(totals.conversionRate)}`}
-            />
-            
-            <Card
-              title="Total Spent"
-              value={formatCurrency(totals.spent)}
-              icon="DollarSign"
-              description={`CPA: ${formatCurrency(totals.cpa)}`}
-            />
+            <div>
+              <FilterDropdown
+                options={channels.map(channel => ({
+                  value: channel,
+                  label: channel.charAt(0).toUpperCase() + channel.slice(1)
+                }))}
+                value={selectedChannel === 'all' ? [] : [selectedChannel]}
+                onChange={(values) => setSelectedChannel(values.length > 0 ? values[0] : 'all')}
+                label="Marketing Channels"
+                placeholder="All Channels"
+                multiple={false}
+              />
+              {selectedChannel !== 'all' && (
+                <button
+                  onClick={() => setSelectedChannel('all')}
+                  className="mt-1 text-xs text-primary-600 hover:text-primary-800"
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
+            <div>
+              <FilterDropdown
+                options={statuses.map(status => ({
+                  value: status,
+                  label: status.charAt(0).toUpperCase() + status.slice(1)
+                }))}
+                value={selectedStatus === 'all' ? [] : [selectedStatus]}
+                onChange={(values) => setSelectedStatus(values.length > 0 ? values[0] : 'all')}
+                label="Campaign Status"
+                placeholder="All Statuses"
+                multiple={false}
+              />
+              {selectedStatus !== 'all' && (
+                <button
+                  onClick={() => setSelectedStatus('all')}
+                  className="mt-1 text-xs text-primary-600 hover:text-primary-800"
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
           </div>
-        )}
-        
+        </div>
+
         {/* Charts Row 1 */}
-        {filteredData.length > 0 && (
+        {filteredCampaigns.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Channel Performance */}
             <div>
               <BarChart
-                data={filteredData.map(channel => ({
-                  name: channel.channel.charAt(0).toUpperCase() + channel.channel.slice(1),
-                  impressions: channel.impressions / 1000, // Convert to thousands for better display
-                  clicks: channel.clicks,
-                  conversions: channel.conversions
-                }))}
+                data={channelPerformanceData}
                 series={[
-                  { key: 'impressions', color: '#8884d8', name: 'Impressions (K)' },
-                  { key: 'clicks', color: '#82ca9d', name: 'Clicks' },
-                  { key: 'conversions', color: '#ffc658', name: 'Conversions' }
+                  { key: 'impressions', color: '#8884d8', name: 'Avg Impressions (K)' },
+                  { key: 'clicks', color: '#82ca9d', name: 'Avg Clicks' },
+                  { key: 'conversions', color: '#ffc658', name: 'Avg Conversions' }
                 ]}
-                title="Channel Performance"
-                description="Key metrics by marketing channel"
+                title="Channel Performance (Averages)"
+                description="Average metrics by marketing channel"
                 layout="vertical"
               />
             </div>
-            
+
             {/* Conversion Rate by Channel */}
             <div>
               <BarChart
-                data={filteredData.map(channel => ({
-                  name: channel.channel.charAt(0).toUpperCase() + channel.channel.slice(1),
-                  ctr: channel.ctr * 100,
-                  conversionRate: channel.conversionRate * 100
-                }))}
+                data={engagementRatesData}
                 series={[
                   { key: 'ctr', color: '#8884d8', name: 'CTR (%)' },
                   { key: 'conversionRate', color: '#82ca9d', name: 'Conversion Rate (%)' }
                 ]}
                 title="Engagement Rates"
-                description="Click-through and conversion rates by channel"
+                description="Average rates by marketing channel"
                 layout="vertical"
               />
             </div>
           </div>
         )}
-        
+
         {/* Charts Row 2 */}
-        {filteredData.length > 0 && (
+        {filteredCampaigns.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Cost Analysis */}
             <div>
               <BarChart
-                data={filteredData.map(channel => ({
-                  name: channel.channel.charAt(0).toUpperCase() + channel.channel.slice(1),
-                  spent: channel.spent,
-                  cpa: channel.cpa
-                }))}
+                data={costAnalysisData}
                 series={[
-                  { key: 'spent', color: '#8884d8', name: 'Total Spent ($)' },
+                  { key: 'spent', color: '#8884d8', name: 'Avg Spent per Campaign ($)' },
                   { key: 'cpa', color: '#ff8042', name: 'Cost per Acquisition ($)' }
                 ]}
                 title="Cost Analysis"
-                description="Spending and cost efficiency by channel"
+                description="Average spending and cost efficiency by channel"
                 layout="vertical"
               />
             </div>
-            
+
             {/* Channel Distribution */}
             <div>
               <PieChart
-                data={filteredData.map(channel => ({
-                  id: channel.channel,
-                  label: channel.channel.charAt(0).toUpperCase() + channel.channel.slice(1),
-                  value: channel.spent
-                }))}
+                data={budgetAllocationData}
                 title="Budget Allocation"
-                description="Marketing spend distribution by channel"
+                description="Total marketing spend by channel ($)"
+                tooltipFormat={(value: number) => formatCurrency(value)}
+                valueFormat={(value: number) => formatCurrency(value)}
               />
             </div>
           </div>
         )}
-        
-        {/* ROI Analysis */}
-        {filteredData.length > 0 && (
-          <div className="bg-white rounded-xl shadow-card p-6 mb-6">
-            <h2 className="text-lg font-semibold text-gray-800 mb-4">ROI Analysis</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Channel
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Impressions
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Clicks
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Conversions
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Spent
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      CTR
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Conv. Rate
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      CPA
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredData.map((channel) => (
-                    <tr key={channel.channel}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {channel.channel.charAt(0).toUpperCase() + channel.channel.slice(1)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {channel.impressions.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {channel.clicks.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {channel.conversions.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatCurrency(channel.spent)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatPercentage(channel.ctr)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatPercentage(channel.conversionRate)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatCurrency(channel.cpa)}
-                      </td>
-                    </tr>
-                  ))}
-                  
-                  {/* Totals row */}
-                  {totals && (
-                    <tr className="bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                        Total
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {totals.impressions.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {totals.clicks.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {totals.conversions.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatCurrency(totals.spent)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatPercentage(totals.ctr)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatPercentage(totals.conversionRate)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatCurrency(totals.cpa)}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+
+        {showRawData && (
+          <div className="mb-8 bg-gray-50 p-4 rounded-lg overflow-auto">
+            <pre className="text-sm">{JSON.stringify(filteredCampaigns, null, 2)}</pre>
           </div>
         )}
-        
+
+        <MarketingTable
+          data={filteredCampaigns}
+          title="Marketing Campaigns"
+          description="Overview of all marketing campaigns and their performance metrics"
+          pageSize={20}
+        />
+
         {/* No Data State */}
-        {!isLoading && filteredData.length === 0 && (
+        {!isLoading && filteredCampaigns.length === 0 && (
           <div className="bg-white rounded-xl shadow-card p-8 text-center">
             <h3 className="text-lg font-medium text-gray-900 mb-2">No marketing data available</h3>
             <p className="text-gray-500">

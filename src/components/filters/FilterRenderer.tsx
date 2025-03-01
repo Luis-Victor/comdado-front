@@ -23,89 +23,112 @@ export function FilterRenderer({ config, value, onChange }: FilterRendererProps)
     label: config.label,
     disabled: config.disabled,
     placeholder: config.placeholder,
-    className: config.className,
+    className: `${config.className || ''} w-full`,  // Make sure all filter inputs take full width
   };
+  
+  // Create a wrapper to provide consistent styling for all filter types
+  const FilterWrapper = ({ children }: { children: React.ReactNode }) => (
+    <div className="filter-wrapper w-full">
+      {children}
+    </div>
+  );
   
   // Render the appropriate filter component based on type
   switch (config.type) {
     case 'dateRange':
       return (
-        <DatePicker
-          {...commonProps}
-          startDate={Array.isArray(currentValue) ? currentValue[0] : ''}
-          endDate={Array.isArray(currentValue) ? currentValue[1] : ''}
-          onStartDateChange={(date) => onChange([date, Array.isArray(currentValue) ? currentValue[1] : ''])}
-          onEndDateChange={(date) => onChange([Array.isArray(currentValue) ? currentValue[0] : '', date])}
-          minDate={config.minDate}
-          maxDate={config.maxDate}
-        />
+        <FilterWrapper>
+          <DatePicker
+            {...commonProps}
+            startDate={Array.isArray(currentValue) ? currentValue[0] : ''}
+            endDate={Array.isArray(currentValue) ? currentValue[1] : ''}
+            onStartDateChange={(date) => onChange([date, Array.isArray(currentValue) ? currentValue[1] : ''])}
+            onEndDateChange={(date) => onChange([Array.isArray(currentValue) ? currentValue[0] : '', date])}
+            minDate={config.minDate}
+            maxDate={config.maxDate}
+          />
+        </FilterWrapper>
       );
       
     case 'dropdown':
       return (
-        <FilterDropdown
-          {...commonProps}
-          options={config.options}
-          value={Array.isArray(currentValue) ? currentValue : [currentValue]}
-          onChange={onChange}
-          multiple={config.multiple}
-        />
+        <FilterWrapper>
+          <FilterDropdown
+            {...commonProps}
+            options={config.options}
+            value={Array.isArray(currentValue) ? currentValue : [currentValue]}
+            onChange={onChange}
+            multiple={config.multiple}
+          />
+        </FilterWrapper>
       );
       
     case 'search':
       return (
-        <SearchBar
-          {...commonProps}
-          onSearch={onChange}
-          debounceMs={config.debounceMs}
-        />
+        <FilterWrapper>
+          <SearchBar
+            {...commonProps}
+            onSearch={onChange}
+            debounceMs={config.debounceMs}
+          />
+        </FilterWrapper>
       );
       
     case 'rangeSlider':
       return (
-        <RangeSlider
-          {...commonProps}
-          min={config.min}
-          max={config.max}
-          step={config.step}
-          value={Array.isArray(currentValue) ? currentValue : [config.min, config.max]}
-          onChange={onChange}
-          formatValue={config.formatValue}
-        />
+        <FilterWrapper>
+          <RangeSlider
+            {...commonProps}
+            min={config.min}
+            max={config.max}
+            step={config.step}
+            value={Array.isArray(currentValue) && currentValue.length === 2 
+              ? currentValue as [number, number] 
+              : [config.min || 0, config.max || 100]}
+            onChange={onChange}
+            formatValue={config.formatValue}
+          />
+        </FilterWrapper>
       );
       
     case 'checkbox':
       return (
-        <CheckboxGroup
-          {...commonProps}
-          options={config.options}
-          value={Array.isArray(currentValue) ? currentValue : []}
-          onChange={onChange}
-          layout={config.layout}
-          columns={config.columns}
-        />
+        <FilterWrapper>
+          <CheckboxGroup
+            {...commonProps}
+            options={config.options}
+            value={Array.isArray(currentValue) ? currentValue : []}
+            onChange={onChange}
+            layout={config.layout}
+            columns={config.columns}
+          />
+        </FilterWrapper>
       );
       
     case 'radio':
       return (
-        <RadioGroup
-          {...commonProps}
-          options={config.options}
-          value={currentValue}
-          onChange={onChange}
-          layout={config.layout}
-        />
+        <FilterWrapper>
+          <RadioGroup
+            {...commonProps}
+            options={config.options}
+            value={currentValue}
+            onChange={onChange}
+            layout={config.layout}
+          />
+        </FilterWrapper>
       );
       
     case 'toggle':
       return (
-        <ToggleSwitch
-          {...commonProps}
-          checked={Boolean(currentValue)}
-          onChange={onChange}
-          onLabel={config.onLabel}
-          offLabel={config.offLabel}
-        />
+        <FilterWrapper>
+          <ToggleSwitch
+            {...commonProps}
+            checked={Boolean(currentValue)}
+            onChange={onChange}
+            onLabel={config.onLabel}
+            offLabel={config.offLabel}
+          />
+        </FilterWrapper>
       );
       
     default:

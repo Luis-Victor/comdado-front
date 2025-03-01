@@ -118,7 +118,7 @@ const generateCustomers = (count: number): Customer[] => {
   const lastNames = ['Smith', 'Johnson', 'Williams', 'Jones', 'Brown', 'Davis', 'Miller', 'Wilson', 'Moore', 'Taylor', 'Anderson', 'Thomas', 'Jackson', 'White', 'Harris', 'Martin', 'Thompson', 'Garcia', 'Martinez', 'Robinson'];
   const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose', 'Austin', 'Jacksonville', 'Fort Worth', 'Columbus', 'San Francisco', 'Charlotte', 'Indianapolis', 'Seattle', 'Denver', 'Boston'];
   const states = ['NY', 'CA', 'IL', 'TX', 'AZ', 'PA', 'TX', 'CA', 'TX', 'CA', 'TX', 'FL', 'TX', 'OH', 'CA', 'NC', 'IN', 'WA', 'CO', 'MA'];
-  const segments = ['retail', 'wholesale', 'online', 'corporate'] as const;
+  const segments = ['retail', 'wholesale', 'online', 'corporate'] as Array<'retail' | 'wholesale' | 'online' | 'corporate'>;
   
   const customers: Customer[] = [];
   
@@ -215,15 +215,20 @@ const generateProducts = (count: number): Product[] => {
 };
 
 const generateOrders = (count: number, customers: Customer[], products: Product[]): { orders: Order[], orderItems: OrderItem[] } => {
-  const statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'] as const;
-  const paymentMethods = ['credit_card', 'paypal', 'bank_transfer', 'cash'] as const;
+  const statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'] as Array<'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'>;
+  const paymentMethods = ['credit_card', 'paypal', 'bank_transfer', 'cash'] as Array<'credit_card' | 'paypal' | 'bank_transfer' | 'cash'>;
   
   const orders: Order[] = [];
   const orderItems: OrderItem[] = [];
   
+  // Ensure we have orders in the last year
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  
   for (let i = 0; i < count; i++) {
     const customer = randomElement(customers);
-    const orderDate = randomDate(customer.createdAt, new Date());
+    // Generate more recent orders to ensure we have data in common date ranges
+    const orderDate = randomDate(oneYearAgo, new Date());
     const status = randomElement(statuses);
     
     // Generate between 1 and 5 items per order
@@ -357,7 +362,7 @@ const generateMarketingCampaigns = (count: number): Marketing[] => {
     'Brand Awareness', 'Loyalty Program', 'Referral Campaign', 'Reengagement', 'Welcome Series'
   ];
   
-  const channels = ['email', 'social', 'search', 'display', 'tv', 'radio', 'print'] as const;
+  const channels = ['email', 'social', 'search', 'display', 'tv', 'radio', 'print'] as Array<'email' | 'social' | 'search' | 'display' | 'tv' | 'radio' | 'print'>;
   const audiences = ['Young Adults', 'Parents', 'Professionals', 'Seniors', 'Students', 'Homeowners', 'Tech Enthusiasts', 'Fitness Enthusiasts', 'Luxury Shoppers', 'Budget Shoppers'];
   
   const campaigns: Marketing[] = [];
@@ -396,11 +401,14 @@ const generateMarketingCampaigns = (count: number): Marketing[] => {
 
 // Generate the mock database
 export const generateMockDatabase = () => {
+  console.log("Generating mock database...");
   const customers = generateCustomers(100);
   const products = generateProducts(50);
-  const { orders, orderItems } = generateOrders(200, customers, products);
+  const { orders, orderItems } = generateOrders(500, customers, products);
   const employees = generateEmployees(30);
   const marketingCampaigns = generateMarketingCampaigns(20);
+  
+  console.log(`Generated mock database with ${customers.length} customers, ${products.length} products, ${orders.length} orders, ${orderItems.length} order items`);
   
   return {
     customers,
@@ -417,6 +425,7 @@ let mockDatabase: ReturnType<typeof generateMockDatabase> | null = null;
 
 export const getMockDatabase = () => {
   if (!mockDatabase) {
+    console.log("Mock database not initialized, generating now...");
     mockDatabase = generateMockDatabase();
   }
   return mockDatabase;
@@ -424,6 +433,14 @@ export const getMockDatabase = () => {
 
 // Reset the database (useful for testing)
 export const resetMockDatabase = () => {
+  console.log("Resetting mock database...");
   mockDatabase = null;
-  return getMockDatabase();
+  const newDb = getMockDatabase();
+  console.log("Mock database reset complete with data:", {
+    customers: newDb.customers.length,
+    products: newDb.products.length,
+    orders: newDb.orders.length,
+    orderItems: newDb.orderItems.length
+  });
+  return newDb;
 };

@@ -249,58 +249,193 @@ export const getOrderStatusDistribution = (startDate: Date | string, endDate: Da
 };
 
 // Get marketing campaign performance
-export const getMarketingPerformance = (startDate: Date | string, endDate: Date | string) => {
-  const db = getMockDatabase();
-  
-  // Filter campaigns by date range (campaigns that were active during the period)
-  const filteredCampaigns = db.marketingCampaigns.filter(campaign => {
-    // Campaign end date is after start date and campaign start date is before end date
-    return campaign.endDate >= (typeof startDate === 'string' ? new Date(startDate) : startDate) &&
-           campaign.startDate <= (typeof endDate === 'string' ? new Date(endDate) : endDate);
-  });
-  
-  // Group by channel
-  const channelPerformance = filteredCampaigns.reduce((acc, campaign) => {
-    if (!acc[campaign.channel]) {
-      acc[campaign.channel] = {
-        channel: campaign.channel,
-        impressions: 0,
-        clicks: 0,
-        conversions: 0,
-        spent: 0,
-        ctr: 0,
-        conversionRate: 0,
-        cpa: 0
-      };
+export function getMarketingCampaigns() {
+  // Fixed marketing campaign data with varied CTR values
+  const campaigns = [
+    {
+      id: 'MC-1',
+      campaign: 'Summer Sale 2024',
+      channel: 'facebook',
+      date: '2024-03-15T10:00:00Z',
+      status: 'active',
+      impressions: 250000,
+      clicks: 17500,  // 7% CTR
+      conversions: 875,
+      spent: 5000,
+      revenue: 25000
+    },
+    {
+      id: 'MC-2',
+      campaign: 'Spring Collection Launch',
+      channel: 'instagram',
+      date: '2024-03-10T09:00:00Z',
+      status: 'active',
+      impressions: 180000,
+      clicks: 10800,  // 6% CTR
+      conversions: 540,
+      spent: 3500,
+      revenue: 18000
+    },
+    {
+      id: 'MC-3',
+      campaign: 'Easter Special',
+      channel: 'email',
+      date: '2024-03-20T08:00:00Z',
+      status: 'scheduled',
+      impressions: 100000,
+      clicks: 8000,   // 8% CTR
+      conversions: 400,
+      spent: 1500,
+      revenue: 10000
+    },
+    {
+      id: 'MC-4',
+      campaign: 'Winter Clearance',
+      channel: 'facebook',
+      date: '2024-02-15T10:00:00Z',
+      status: 'completed',
+      impressions: 300000,
+      clicks: 12000,  // 4% CTR
+      conversions: 600,
+      spent: 6000,
+      revenue: 30000
+    },
+    {
+      id: 'MC-5',
+      campaign: 'Valentine\'s Day Special',
+      channel: 'instagram',
+      date: '2024-02-14T09:00:00Z',
+      status: 'completed',
+      impressions: 200000,
+      clicks: 14000,  // 7% CTR
+      conversions: 700,
+      spent: 4000,
+      revenue: 20000
+    },
+    {
+      id: 'MC-6',
+      campaign: 'New Year Sale',
+      channel: 'email',
+      date: '2024-01-01T08:00:00Z',
+      status: 'completed',
+      impressions: 150000,
+      clicks: 9000,   // 6% CTR
+      conversions: 450,
+      spent: 2500,
+      revenue: 15000
+    },
+    {
+      id: 'MC-7',
+      campaign: 'Back to School',
+      channel: 'google',
+      date: '2024-03-25T10:00:00Z',
+      status: 'scheduled',
+      impressions: 220000,
+      clicks: 6600,   // 3% CTR
+      conversions: 330,
+      spent: 4500,
+      revenue: 22000
+    },
+    {
+      id: 'MC-8',
+      campaign: 'Tech Gadgets Promo',
+      channel: 'google',
+      date: '2024-03-01T09:00:00Z',
+      status: 'active',
+      impressions: 280000,
+      clicks: 11200,  // 4% CTR
+      conversions: 560,
+      spent: 5500,
+      revenue: 28000
+    },
+    {
+      id: 'MC-9',
+      campaign: 'Home Office Essentials',
+      channel: 'linkedin',
+      date: '2024-02-28T08:00:00Z',
+      status: 'completed',
+      impressions: 120000,
+      clicks: 3600,   // 3% CTR
+      conversions: 180,
+      spent: 3000,
+      revenue: 12000
+    },
+    {
+      id: 'MC-10',
+      campaign: 'Fitness Equipment Sale',
+      channel: 'facebook',
+      date: '2024-03-05T10:00:00Z',
+      status: 'active',
+      impressions: 260000,
+      clicks: 15600,  // 6% CTR
+      conversions: 780,
+      spent: 5200,
+      revenue: 26000
+    },
+    {
+      id: 'MC-11',
+      campaign: 'Spring Fashion Week',
+      channel: 'instagram',
+      date: '2024-03-30T09:00:00Z',
+      status: 'scheduled',
+      impressions: 240000,
+      clicks: 16800,  // 7% CTR
+      conversions: 840,
+      spent: 4800,
+      revenue: 24000
+    },
+    {
+      id: 'MC-12',
+      campaign: 'Home Decor Collection',
+      channel: 'pinterest',
+      date: '2024-03-12T08:00:00Z',
+      status: 'active',
+      impressions: 160000,
+      clicks: 12800,  // 8% CTR
+      conversions: 640,
+      spent: 3200,
+      revenue: 16000
+    },
+    {
+      id: 'MC-13',
+      campaign: 'Mother\'s Day Preview',
+      channel: 'email',
+      date: '2024-04-01T10:00:00Z',
+      status: 'scheduled',
+      impressions: 190000,
+      clicks: 7600,   // 4% CTR
+      conversions: 380,
+      spent: 3800,
+      revenue: 19000
+    },
+    {
+      id: 'MC-14',
+      campaign: 'Weekend Flash Sale',
+      channel: 'facebook',
+      date: '2024-03-08T09:00:00Z',
+      status: 'completed',
+      impressions: 210000,
+      clicks: 10500,  // 5% CTR
+      conversions: 525,
+      spent: 4200,
+      revenue: 21000
+    },
+    {
+      id: 'MC-15',
+      campaign: 'Premium Membership Drive',
+      channel: 'linkedin',
+      date: '2024-03-18T08:00:00Z',
+      status: 'active',
+      impressions: 140000,
+      clicks: 4200,   // 3% CTR
+      conversions: 210,
+      spent: 2800,
+      revenue: 14000
     }
-    
-    acc[campaign.channel].impressions += campaign.impressions;
-    acc[campaign.channel].clicks += campaign.clicks;
-    acc[campaign.channel].conversions += campaign.conversions;
-    acc[campaign.channel].spent += campaign.spent;
-    
-    return acc;
-  }, {} as Record<string, { 
-    channel: string; 
-    impressions: number; 
-    clicks: number; 
-    conversions: number; 
-    spent: number;
-    ctr: number;
-    conversionRate: number;
-    cpa: number;
-  }>);
-  
-  // Calculate metrics
-  Object.values(channelPerformance).forEach(channel => {
-    channel.ctr = channel.clicks / channel.impressions;
-    channel.conversionRate = channel.conversions / channel.clicks;
-    channel.cpa = channel.spent / channel.conversions;
-  });
-  
-  // Convert to array
-  return Object.values(channelPerformance);
-};
+  ];
+
+  return campaigns;
+}
 
 // Get employee performance by department
 export const getEmployeePerformance = () => {
@@ -413,49 +548,186 @@ export const getSalesForecast = (days: number = 30) => {
 };
 
 // Get inventory status
-export const getInventoryStatus = () => {
-  const db = getMockDatabase();
-  
-  // Group products by inventory level
-  const inventoryLevels = {
-    outOfStock: 0,
-    low: 0,
-    medium: 0,
-    high: 0
-  };
-  
-  db.products.forEach(product => {
-    if (product.inventoryCount === 0) {
-      inventoryLevels.outOfStock++;
-    } else if (product.inventoryCount < 10) {
-      inventoryLevels.low++;
-    } else if (product.inventoryCount < 50) {
-      inventoryLevels.medium++;
-    } else {
-      inventoryLevels.high++;
+export function getInventoryStatus() {
+  // Fixed products data
+  const allProducts = [
+    // Electronics
+    {
+      id: 'PROD-1',
+      name: 'Smartphone X12',
+      category: 'Electronics',
+      inventoryCount: 45,
+      price: 899,
+      reorderLevel: 20,
+      sku: 'ELEC-SP12',
+      lastUpdated: '2024-03-15T10:00:00Z'
+    },
+    {
+      id: 'PROD-2',
+      name: 'Laptop Pro 15"',
+      category: 'Electronics',
+      inventoryCount: 12,
+      price: 1299,
+      reorderLevel: 15,
+      sku: 'ELEC-LP15',
+      lastUpdated: '2024-03-14T15:30:00Z'
+    },
+    {
+      id: 'PROD-3',
+      name: 'Wireless Earbuds',
+      category: 'Electronics',
+      inventoryCount: 78,
+      price: 159,
+      reorderLevel: 30,
+      sku: 'ELEC-WE01',
+      lastUpdated: '2024-03-16T09:15:00Z'
+    },
+    // Clothing
+    {
+      id: 'PROD-4',
+      name: 'Classic Denim Jeans',
+      category: 'Clothing',
+      inventoryCount: 95,
+      price: 79,
+      reorderLevel: 40,
+      sku: 'CLO-DJ01',
+      lastUpdated: '2024-03-15T11:20:00Z'
+    },
+    {
+      id: 'PROD-5',
+      name: 'Cotton T-Shirt',
+      category: 'Clothing',
+      inventoryCount: 150,
+      price: 29,
+      reorderLevel: 50,
+      sku: 'CLO-TS01',
+      lastUpdated: '2024-03-16T08:45:00Z'
+    },
+    {
+      id: 'PROD-6',
+      name: 'Winter Jacket',
+      category: 'Clothing',
+      inventoryCount: 8,
+      price: 199,
+      reorderLevel: 15,
+      sku: 'CLO-WJ01',
+      lastUpdated: '2024-03-14T16:40:00Z'
+    },
+    // Books
+    {
+      id: 'PROD-7',
+      name: 'Programming Guide 2024',
+      category: 'Books',
+      inventoryCount: 0,
+      price: 49,
+      reorderLevel: 25,
+      sku: 'BOOK-PG24',
+      lastUpdated: '2024-03-13T14:20:00Z'
+    },
+    {
+      id: 'PROD-8',
+      name: 'Business Strategy',
+      category: 'Books',
+      inventoryCount: 35,
+      price: 39,
+      reorderLevel: 20,
+      sku: 'BOOK-BS01',
+      lastUpdated: '2024-03-15T13:10:00Z'
+    },
+    {
+      id: 'PROD-9',
+      name: 'Cooking Masterclass',
+      category: 'Books',
+      inventoryCount: 42,
+      price: 45,
+      reorderLevel: 25,
+      sku: 'BOOK-CM01',
+      lastUpdated: '2024-03-16T10:30:00Z'
+    },
+    // Home & Garden
+    {
+      id: 'PROD-10',
+      name: 'Garden Tool Set',
+      category: 'Home & Garden',
+      inventoryCount: 25,
+      price: 89,
+      reorderLevel: 20,
+      sku: 'HG-GTS01',
+      lastUpdated: '2024-03-15T09:50:00Z'
+    },
+    {
+      id: 'PROD-11',
+      name: 'Smart Plant Pot',
+      category: 'Home & Garden',
+      inventoryCount: 5,
+      price: 59,
+      reorderLevel: 15,
+      sku: 'HG-SPP01',
+      lastUpdated: '2024-03-14T11:25:00Z'
+    },
+    {
+      id: 'PROD-12',
+      name: 'LED Grow Light',
+      category: 'Home & Garden',
+      inventoryCount: 18,
+      price: 129,
+      reorderLevel: 20,
+      sku: 'HG-LGL01',
+      lastUpdated: '2024-03-16T12:15:00Z'
+    },
+    // Sports
+    {
+      id: 'PROD-13',
+      name: 'Yoga Mat Premium',
+      category: 'Sports',
+      inventoryCount: 55,
+      price: 49,
+      reorderLevel: 30,
+      sku: 'SPT-YM01',
+      lastUpdated: '2024-03-15T14:40:00Z'
+    },
+    {
+      id: 'PROD-14',
+      name: 'Running Shoes Pro',
+      category: 'Sports',
+      inventoryCount: 3,
+      price: 159,
+      reorderLevel: 25,
+      sku: 'SPT-RS01',
+      lastUpdated: '2024-03-14T13:55:00Z'
+    },
+    {
+      id: 'PROD-15',
+      name: 'Fitness Tracker',
+      category: 'Sports',
+      inventoryCount: 28,
+      price: 129,
+      reorderLevel: 20,
+      sku: 'SPT-FT01',
+      lastUpdated: '2024-03-16T11:05:00Z'
     }
-  });
-  
-  // Get products that need restocking
-  const needsRestocking = db.products
-    .filter(product => product.inventoryCount < 10 && product.isAvailable)
-    .map(product => ({
-      id: product.id,
-      name: product.name,
-      category: product.category,
-      inventoryCount: product.inventoryCount,
-      price: product.price
-    }))
-    .sort((a, b) => a.inventoryCount - b.inventoryCount);
-  
+  ];
+
+  // Filter products needing restock (inventory count <= reorder level)
+  const needsRestocking = allProducts.filter(p => p.inventoryCount <= p.reorderLevel);
+
+  // Calculate inventory levels
+  const inventoryLevels = {
+    outOfStock: allProducts.filter(p => p.inventoryCount === 0).length,
+    low: allProducts.filter(p => p.inventoryCount > 0 && p.inventoryCount < 10).length,
+    medium: allProducts.filter(p => p.inventoryCount >= 10 && p.inventoryCount < 50).length,
+    high: allProducts.filter(p => p.inventoryCount >= 50).length
+  };
+
   return {
     inventoryLevels,
     needsRestocking,
-    totalProducts: db.products.length,
-    totalInventory: db.products.reduce((sum, product) => sum + product.inventoryCount, 0),
-    inventoryValue: db.products.reduce((sum, product) => sum + (product.price * product.inventoryCount), 0)
+    allProducts,
+    totalProducts: allProducts.length,
+    totalInventory: allProducts.reduce((sum, p) => sum + p.inventoryCount, 0),
+    inventoryValue: allProducts.reduce((sum, p) => sum + (p.price * p.inventoryCount), 0)
   };
-};
+}
 
 // Get key performance indicators
 export const getKPIs = (startDate: Date | string, endDate: Date | string) => {
@@ -508,4 +780,106 @@ export const getKPIs = (startDate: Date | string, endDate: Date | string) => {
     activeCustomers,
     newCustomers
   };
+};
+
+// Get available date range from the database
+export const getAvailableDates = () => {
+  const db = getMockDatabase();
+  
+  // Get min and max dates from orders
+  let minDate = new Date();
+  let maxDate = new Date(2000, 0, 1); // Start with old date
+  
+  db.orders.forEach(order => {
+    if (order.orderDate < minDate) {
+      minDate = order.orderDate;
+    }
+    if (order.orderDate > maxDate) {
+      maxDate = order.orderDate;
+    }
+  });
+  
+  return {
+    min: format(minDate, 'yyyy-MM-dd'),
+    max: format(maxDate, 'yyyy-MM-dd')
+  };
+};
+
+// Get available product categories from the database
+export const getAvailableCategories = () => {
+  const db = getMockDatabase();
+  
+  // Extract unique categories
+  const uniqueCategories = new Set<string>();
+  
+  db.products.forEach(product => {
+    uniqueCategories.add(product.category);
+  });
+  
+  // Convert to array of options
+  return Array.from(uniqueCategories)
+    .sort()
+    .map(category => ({
+      value: category,
+      label: category
+    }));
+};
+
+// Get available categories for Sales Dashboard
+export const getSalesCategories = () => {
+  const db = getMockDatabase();
+  
+  // Extract unique categories that have sales data
+  const categoriesWithSales = new Set<string>();
+  
+  // Get all products that have been ordered
+  const productIds = new Set<string>();
+  db.orderItems.forEach(item => {
+    productIds.add(item.productId);
+  });
+  
+  // Get categories of products that have been ordered
+  db.products
+    .filter(product => productIds.has(product.id))
+    .forEach(product => {
+      categoriesWithSales.add(product.category);
+    });
+  
+  // Convert to array of options
+  return Array.from(categoriesWithSales)
+    .sort()
+    .map(category => ({
+      value: category,
+      label: category
+    }));
+};
+
+// Get available inventory status options for Inventory Dashboard
+export const getInventoryStatusOptions = () => {
+  return [
+    { value: 'outOfStock', label: 'Out of Stock' },
+    { value: 'low', label: 'Low Stock' },
+    { value: 'medium', label: 'Medium Stock' },
+    { value: 'high', label: 'High Stock' }
+  ];
+};
+
+// Get available marketing channels for Marketing Dashboard
+export const getMarketingChannels = () => {
+  const db = getMockDatabase();
+  
+  // Extract unique marketing channels
+  const uniqueChannels = new Set<string>();
+  
+  db.marketingCampaigns.forEach(campaign => {
+    uniqueChannels.add(campaign.channel);
+  });
+  
+  // Convert to array of options
+  return Array.from(uniqueChannels)
+    .sort()
+    .map(channel => ({
+      value: channel,
+      label: channel.charAt(0).toUpperCase() + channel.slice(1) // Capitalize first letter
+    }));
 };

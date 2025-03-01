@@ -8,6 +8,7 @@ interface RangeSliderProps {
   step?: number;
   label?: string;
   formatValue?: (value: number) => string;
+  className?: string;
 }
 
 export function RangeSlider({
@@ -18,6 +19,7 @@ export function RangeSlider({
   step = 1,
   label,
   formatValue = (val) => val.toString(),
+  className = '',
 }: RangeSliderProps) {
   const handleMinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newMin = Math.min(Number(e.target.value), value[1] - step);
@@ -34,7 +36,7 @@ export function RangeSlider({
   const maxPercent = ((value[1] - min) / (max - min)) * 100;
 
   return (
-    <div className="w-full px-4"> {/* Increased padding */}
+    <div className={`w-full px-4 ${className}`}> {/* Increased padding */}
       {label && (
         <label className="block text-sm font-medium text-gray-700 mb-2">
           {label}

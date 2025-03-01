@@ -13,6 +13,7 @@ interface FilterDropdownProps {
   label?: string;
   placeholder?: string;
   multiple?: boolean;
+  className?: string;
 }
 
 export function FilterDropdown({
@@ -22,6 +23,7 @@ export function FilterDropdown({
   label,
   placeholder = 'Select option',
   multiple = true,
+  className = '',
 }: FilterDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -55,7 +57,7 @@ export function FilterDropdown({
     .join(', ');
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className={`relative filter-dropdown ${className}`} ref={dropdownRef}>
       {label && (
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
           {label}

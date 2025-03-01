@@ -18,6 +18,7 @@ interface PieChartProps extends BaseChartProps {
   sortByValue?: boolean;
   innerRadius?: number;
   activeOuterRadiusOffset?: number;
+  valueFormat?: (value: number) => string;
 }
 
 export function PieChart({ 

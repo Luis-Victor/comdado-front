@@ -98,7 +98,7 @@ export function FilterBar({
       
       {/* Filter Bar Content */}
       {!collapsed && (
-        <div className={`filter-bar-content ${shouldStack ? 'flex flex-col space-y-3' : 'flex flex-wrap items-center gap-3'}`}>
+        <div className={`filter-bar-content ${shouldStack ? 'filter-stack' : ''}`}>
           {config.filters.map(filterId => {
             const filter = filters.find(f => f.id === filterId);
             if (!filter) return null;
@@ -114,7 +114,7 @@ export function FilterBar({
             return (
               <div 
                 key={filterId}
-                className={`filter-item ${isFullWidth ? 'w-full' : ''} ${shouldStack ? 'w-full' : ''}`}
+                className={`filter-item ${isFullWidth ? 'col-span-full' : ''}`}
               >
                 <FilterRenderer
                   config={filter}

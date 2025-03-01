@@ -1,33 +1,69 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card } from '../components/Card';
 import { PieChart } from '../components/charts/PieChart';
 import { BarChart } from '../components/charts/BarChart';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { getInventoryStatus, getTopSellingProducts } from '../lib/mockData/queries';
-import { format, subMonths } from 'date-fns';
+import { getInventoryStatus, getInventoryStatusOptions } from '../lib/mockData/queries';
 import { FilterDropdown } from '../components/filters/FilterDropdown';
 import { SearchBar } from '../components/filters/SearchBar';
 import { RangeSlider } from '../components/filters/RangeSlider';
-import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { RefreshCw, AlertTriangle, Database } from 'lucide-react';
+import { InventoryTable } from '../components/common/InventoryTable';
+
+// Define interfaces for type safety
+interface InventoryProduct {
+  id: string;
+  name: string;
+  category: string;
+  inventoryCount: number;
+  price: number;
+  reorderLevel: number;
+  sku?: string;
+  lastUpdated?: string;
+}
+
+interface InventoryStatus {
+  inventoryLevels: {
+    outOfStock: number;
+    low: number;
+    medium: number;
+    high: number;
+  };
+  needsRestocking: InventoryProduct[];
+  allProducts: InventoryProduct[];
+  totalProducts: number;
+  totalInventory: number;
+  inventoryValue: number;
+}
 
 export default function InventoryDashboard() {
   // State for filters
-  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [stockStatusFilter, setStockStatusFilter] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [stockRange, setStockRange] = useState<[number, number]>([0, 1000]);
+  const [stockRange, setStockRange] = useState<[number, number]>([0, 0]);
+  const [maxStockLevel, setMaxStockLevel] = useState<number>(0);
+  
+  // State for available filter options
+  const [stockStatusOptions, setStockStatusOptions] = useState<{value: string, label: string}[]>([]);
   
   // State for data
-  const [inventoryData, setInventoryData] = useState<any>(null);
-  const [topProducts, setTopProducts] = useState<any[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
+  const [inventoryData, setInventoryData] = useState<InventoryStatus | null>(null);
+  const [filteredProducts, setFilteredProducts] = useState<InventoryProduct[]>([]);
   
   // Loading state
   const [isLoading, setIsLoading] = useState(true);
   
+  // State for showing raw data
+  const [showRawData, setShowRawData] = useState(false);
+  
   // Load initial data
   useEffect(() => {
+    // Load available stock status options
+    const statusOptions = getInventoryStatusOptions();
+    setStockStatusOptions(statusOptions);
+    
     loadInventoryData();
   }, []);
   
@@ -36,24 +72,41 @@ export default function InventoryDashboard() {
     if (inventoryData) {
       applyFilters();
     }
-  }, [categoryFilter, searchQuery, stockRange, inventoryData]);
+  }, [stockStatusFilter, searchQuery, stockRange, inventoryData]);
+  
+  // Helper function to deduplicate products
+  const deduplicateProducts = (products: InventoryProduct[]): InventoryProduct[] => {
+    return products.reduce((unique: InventoryProduct[], item: InventoryProduct) => {
+      const exists = unique.some(x => x.id === item.id);
+      if (!exists) {
+        unique.push(item);
+      }
+      return unique;
+    }, []);
+  };
   
   const loadInventoryData = async () => {
     setIsLoading(true);
     
     try {
       // Get inventory status
-      const inventory = getInventoryStatus();
+      const inventory = getInventoryStatus() as InventoryStatus;
       setInventoryData(inventory);
       
-      // Get top selling products for the last 3 months
-      const endDate = new Date();
-      const startDate = subMonths(endDate, 3);
-      const products = getTopSellingProducts(startDate, endDate, 50);
-      setTopProducts(products);
+      // Combine and deduplicate products
+      const allProducts = deduplicateProducts([
+        ...(inventory.allProducts || []),
+        ...(inventory.needsRestocking || [])
+      ]);
+
+      // Calculate max stock level from actual data
+      const maxStock = Math.max(...allProducts.map(p => p.inventoryCount));
+      setMaxStockLevel(maxStock);
       
-      // Initialize filtered products
-      setFilteredProducts(inventory.needsRestocking);
+      // Initialize stock range with actual min/max values
+      setStockRange([0, maxStock]);
+      
+      setFilteredProducts(allProducts);
       
     } catch (error) {
       console.error('Error loading inventory data:', error);
@@ -65,96 +118,173 @@ export default function InventoryDashboard() {
   const applyFilters = () => {
     if (!inventoryData) return;
     
-    // Start with all products that need restocking
-    let filtered = [...inventoryData.needsRestocking];
+    // Start with all products
+    const allProducts = deduplicateProducts([
+      ...(inventoryData.allProducts || []),
+      ...(inventoryData.needsRestocking || [])
+    ]);
     
-    // Apply category filter
-    if (categoryFilter.length > 0) {
-      filtered = filtered.filter(product => categoryFilter.includes(product.category));
-    }
-    
-    // Apply search filter
-    if (searchQuery) {
-      filtered = filtered.filter(product => 
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-    
-    // Apply stock range filter
-    filtered = filtered.filter(product => 
-      product.inventoryCount >= stockRange[0] && product.inventoryCount <= stockRange[1]
-    );
+    // Apply all filters in a single pass
+    const filtered = allProducts.filter(product => {
+      // Stock status filter
+      if (stockStatusFilter.length > 0) {
+        let status = 'high';
+        if (product.inventoryCount === 0) {
+          status = 'outOfStock';
+        } else if (product.inventoryCount < 10) {
+          status = 'low';
+        } else if (product.inventoryCount < 50) {
+          status = 'medium';
+        }
+        
+        if (!stockStatusFilter.includes(status)) {
+          return false;
+        }
+      }
+      
+      // Search filter
+      if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      
+      // Stock range filter
+      if (product.inventoryCount < stockRange[0] || product.inventoryCount > stockRange[1]) {
+        return false;
+      }
+      
+      return true;
+    });
     
     setFilteredProducts(filtered);
   };
   
-  const handleRefresh = () => {
-    loadInventoryData();
-  };
-  
-  const handleCategoryFilterChange = (categories: string[]) => {
-    setCategoryFilter(categories);
-  };
-  
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
-  };
-  
-  const handleStockRangeChange = (range: [number, number]) => {
-    setStockRange(range);
-  };
-  
-  // Format currency
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+  // Format currency - memoized to avoid recreating on each render
+  const formatCurrency = useMemo(() => {
+    const formatter = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
-    }).format(value);
-  };
+    });
+    
+    return (value: number) => formatter.format(value);
+  }, []);
   
-  // Get available categories for filter
-  const categoryOptions = inventoryData 
-    ? Array.from(new Set(inventoryData.needsRestocking.map((p: any) => p.category)))
-        .map(cat => ({ value: cat as string, label: cat as string }))
-    : [];
+  // Memoized calculations for KPIs to avoid recalculating on each render
+  const kpis = useMemo(() => {
+    if (!filteredProducts.length) return null;
+    
+    return {
+      totalProducts: filteredProducts.length,
+      totalInventory: filteredProducts.reduce((sum, p) => sum + p.inventoryCount, 0),
+      inventoryValue: filteredProducts.reduce((sum, p) => sum + (p.price * p.inventoryCount), 0),
+      outOfStock: filteredProducts.filter(p => p.inventoryCount === 0).length
+    };
+  }, [filteredProducts]);
+  
+  // Memoized data for charts
+  const chartData = useMemo(() => {
+    if (!filteredProducts.length) return null;
+    
+    return {
+      inventoryLevels: [
+        { 
+          id: 'Out of Stock', 
+          label: 'Out of Stock', 
+          value: filteredProducts.filter(p => p.inventoryCount === 0).length 
+        },
+        { 
+          id: 'Low Stock', 
+          label: 'Low Stock', 
+          value: filteredProducts.filter(p => p.inventoryCount > 0 && p.inventoryCount < 10).length 
+        },
+        { 
+          id: 'Medium Stock', 
+          label: 'Medium Stock', 
+          value: filteredProducts.filter(p => p.inventoryCount >= 10 && p.inventoryCount < 50).length 
+        },
+        { 
+          id: 'High Stock', 
+          label: 'High Stock', 
+          value: filteredProducts.filter(p => p.inventoryCount >= 50).length 
+        },
+      ],
+      topProductsByValue: filteredProducts
+        .sort((a, b) => (b.price * b.inventoryCount) - (a.price * a.inventoryCount))
+        .slice(0, 10)
+        .map(product => ({
+          name: product.name.length > 20 
+            ? product.name.substring(0, 20) + '...' 
+            : product.name,
+          value: product.price * product.inventoryCount
+        }))
+    };
+  }, [filteredProducts]);
   
   return (
     <DashboardLayout>
       <PageHeader
         title="Inventory Dashboard"
-        description="Monitor inventory levels and identify products that need restocking"
+        description="Real-time inventory management and analytics"
         actions={
-          <button
-            onClick={handleRefresh}
-            disabled={isLoading}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex space-x-3">
+            <button
+              onClick={() => setShowRawData(!showRawData)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <Database className="h-4 w-4 mr-2" />
+              {showRawData ? 'Hide Raw Data' : 'Show Raw Data'}
+            </button>
+            <button
+              onClick={loadInventoryData}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </button>
+          </div>
         }
       />
+      
+      {/* Show raw data section */}
+      {showRawData && (
+        <div className="mb-6">
+          <InventoryTable
+            data={filteredProducts.map(product => ({
+              id: product.id,
+              productName: product.name,
+              category: product.category,
+              sku: product.sku || `SKU-${product.id}`,
+              currentStock: product.inventoryCount || 0,
+              reorderLevel: product.reorderLevel || 10,
+              unitPrice: product.price || 0,
+              lastUpdated: product.lastUpdated || new Date().toISOString()
+            }))}
+            title="Inventory Data"
+            description={`Showing ${filteredProducts.length} products`}
+            pageSize={20}
+          />
+        </div>
+      )}
       
       {/* Filters Section */}
       <div className="bg-white rounded-xl shadow-card p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <FilterDropdown
-              options={categoryOptions}
-              value={categoryFilter}
-              onChange={handleCategoryFilterChange}
-              label="Product Categories"
-              placeholder="All Categories"
+              options={stockStatusOptions}
+              value={stockStatusFilter}
+              onChange={setStockStatusFilter}
+              label="Stock Status"
+              placeholder="All Statuses"
               multiple={true}
             />
           </div>
           
           <div>
             <SearchBar
-              onSearch={handleSearchChange}
+              onSearch={setSearchQuery}
               placeholder="Search products..."
               label="Product Search"
             />
@@ -163,10 +293,10 @@ export default function InventoryDashboard() {
           <div>
             <RangeSlider
               min={0}
-              max={50}
-              step={1}
+              max={maxStockLevel}
+              step={Math.max(1, Math.floor(maxStockLevel / 100))}
               value={stockRange}
-              onChange={handleStockRangeChange}
+              onChange={setStockRange}
               label="Stock Level"
               formatValue={(val) => `${val} units`}
             />
@@ -186,71 +316,63 @@ export default function InventoryDashboard() {
         )}
         
         {/* KPI Cards */}
-        {inventoryData && (
+        {kpis && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             <Card
               title="Total Products"
-              value={inventoryData.totalProducts.toString()}
+              value={kpis.totalProducts.toString()}
               icon="Package"
               description="in inventory"
             />
             
             <Card
               title="Total Inventory"
-              value={inventoryData.totalInventory.toString()}
+              value={kpis.totalInventory.toString()}
               icon="Boxes"
               description="units in stock"
             />
             
             <Card
               title="Inventory Value"
-              value={formatCurrency(inventoryData.inventoryValue)}
+              value={formatCurrency(kpis.inventoryValue)}
               icon="DollarSign"
               description="total value"
             />
             
             <Card
               title="Out of Stock"
-              value={inventoryData.inventoryLevels.outOfStock.toString()}
+              value={kpis.outOfStock.toString()}
               icon="AlertTriangle"
               description="products"
-              className={inventoryData.inventoryLevels.outOfStock > 0 ? "border-l-4 border-red-500" : ""}
+              className={kpis.outOfStock > 0 ? "border-l-4 border-red-500" : ""}
             />
           </div>
         )}
         
         {/* Charts Row */}
-        {inventoryData && (
+        {chartData && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Inventory Levels */}
             <div>
               <PieChart
-                data={[
-                  { id: 'Out of Stock', label: 'Out of Stock', value: inventoryData.inventoryLevels.outOfStock },
-                  { id: 'Low Stock', label: 'Low Stock', value: inventoryData.inventoryLevels.low },
-                  { id: 'Medium Stock', label: 'Medium Stock', value: inventoryData.inventoryLevels.medium },
-                  { id: 'High Stock', label: 'High Stock', value: inventoryData.inventoryLevels.high },
-                ]}
+                data={chartData.inventoryLevels}
                 title="Inventory Levels"
-                description="Distribution of products by stock level"
+                description={`Distribution of ${filteredProducts.length} filtered products by stock level`}
                 colors={{ scheme: 'red_yellow_green' }}
+                tooltipFormat={(value: number) => `${value} products`}
+                valueFormat={(value: number) => `${value}`}
               />
             </div>
             
-            {/* Top Selling Products */}
+            {/* Top Products by Value */}
             <div>
               <BarChart
-                data={topProducts.slice(0, 10).map(product => ({
-                  name: product.productName.length > 20 
-                    ? product.productName.substring(0, 20) + '...' 
-                    : product.productName,
-                  units: product.units
-                }))}
+                data={chartData.topProductsByValue}
                 series={[
-                  { key: 'units', color: '#8884d8', name: 'Units Sold' },
+                  { key: 'value', color: '#8884d8', name: 'Inventory Value' },
                 ]}
-                title="Top Selling Products"
-                description="Products with highest sales volume in the last 3 months"
+                title="Top Products by Value"
+                description={`Top 10 products by total inventory value from ${filteredProducts.length} filtered products`}
                 layout="horizontal"
               />
             </div>

@@ -3,6 +3,7 @@
 /* Filter Bar */
 .filter-bar {
   margin-bottom: 1rem;
+  width: 100%;
 }
 
 .filter-bar.topbar {
@@ -38,7 +39,39 @@
 
 /* Filter Items */
 .filter-item {
-  margin-bottom: 0.5rem;
+  width: 100%;
+  height: 100%; /* Force full height of grid cell */
+  position: relative; /* Positioning context for any absolute children */
+  padding: 4px; /* Add some internal padding */
+}
+
+/* Filter wrapper */
+.filter-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Filter Bar Content - Grid Layout */
+.filter-bar-content {
+  display: grid;
+  /* Increase minimum width to prevent squeezing and overlapping */
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px; /* Increased gap between filters */
+  width: 100%;
+}
+
+/* Special handling for dropdown and date filters which need more space */
+.filter-item:has(.filter-dropdown), 
+.filter-item:has(.date-filter) {
+  min-height: 90px; /* Increase height for these filters */
+}
+
+/* When filters should be stacked */
+.filter-bar-content.filter-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 24px; /* Increased gap for stacked filters */
 }
 
 /* Filter Summary */
@@ -47,14 +80,42 @@
 }
 
 /* Responsive Adjustments */
+@media (max-width: 1200px) {
+  .filter-bar-content {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .filter-bar-content {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .filter-bar-content {
+    grid-template-columns: 1fr 1fr; /* Just force 2 columns on tablets */
+    gap: 14px;
+  }
+  
+  /* Force filter items to have sufficient height on tablets */
+  .filter-item {
+    min-height: 100px;
+  }
+}
+
 @media (max-width: 640px) {
-  .filter-bar-content.flex-wrap {
+  .filter-bar-content {
+    display: flex;
     flex-direction: column;
+    gap: 20px;
   }
   
   .filter-item {
-    width: 100%;
-    margin-right: 0;
+    margin-bottom: 10px;
+    min-height: unset;
   }
 }
 

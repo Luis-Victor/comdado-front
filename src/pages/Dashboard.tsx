@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { PageHeader } from '../components/common/PageHeader';
 import { Card } from '../components/Card';
@@ -6,103 +6,105 @@ import { LineChart } from '../components/charts/LineChart';
 import { BarChart } from '../components/charts/BarChart';
 import { PieChart } from '../components/charts/PieChart';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
-import { Download, RefreshCw, Share2 } from 'lucide-react';
-import { 
-  getSalesByDateRange, 
-  getSalesByCategory, 
-  getTopSellingProducts,
-  getCustomerSegments,
-  getOrderStatusDistribution,
-  getKPIs
-} from '../lib/mockData/queries';
-import { format, subDays, subMonths, parseISO } from 'date-fns';
+import { RefreshCw, Database } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+
+// Import only fixedSalesTableData
+import { fixedSalesTableData } from '../lib/mockData/fixedData';
 
 // Filter components
 import { DatePicker } from '../components/filters/DatePicker';
 import { FilterDropdown } from '../components/filters/FilterDropdown';
-import { SearchBar } from '../components/filters/SearchBar';
 import { RangeSlider } from '../components/filters/RangeSlider';
+import { SalesDataTable } from '../components/common/SalesDataTable';
 
 export default function Dashboard() {
   // State for filters
   const [dateRange, setDateRange] = useState<[string, string]>([
-    format(subMonths(new Date(), 3), 'yyyy-MM-dd'),
-    format(new Date(), 'yyyy-MM-dd')
+    "2023-01-01",
+    "2023-12-31"
   ]);
-  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [segmentFilter, setSegmentFilter] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
   
-  // State for data
-  const [salesData, setSalesData] = useState<any[]>([]);
-  const [categoryData, setCategoryData] = useState<any[]>([]);
-  const [topProducts, setTopProducts] = useState<any[]>([]);
-  const [customerSegments, setCustomerSegments] = useState<any[]>([]);
-  const [orderStatuses, setOrderStatuses] = useState<any[]>([]);
-  const [kpis, setKpis] = useState<any>(null);
+  // State for available filter options
+  const [availableDates, setAvailableDates] = useState<{min: string, max: string}>({
+    min: "2023-01-01",
+    max: "2023-12-31"
+  });
+  
+  // State for price range limits
+  const [priceRangeLimits, setPriceRangeLimits] = useState<{min: number, max: number}>({
+    min: 0,
+    max: 1000
+  });
+  
+  // State for filtered data
+  const [filteredData, setFilteredData] = useState<any[]>(fixedSalesTableData);
   
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Load initial data
+  // State for showing raw data tables
+  const [showRawData, setShowRawData] = useState(false);
+  
+  // Load initial data and available filter options
   useEffect(() => {
+    // Calculate available dates from the data
+    const dates = fixedSalesTableData.map(item => item.Date);
+    setAvailableDates({
+      min: dates.reduce((a, b) => a < b ? a : b),
+      max: dates.reduce((a, b) => a > b ? a : b)
+    });
+    
+    // Calculate price range limits from the data
+    const prices = fixedSalesTableData.map(item => item["Sale Price"]);
+    setPriceRangeLimits({
+      min: Math.floor(Math.min(...prices)),
+      max: Math.ceil(Math.max(...prices))
+    });
+    
+    // Set initial price range
+    setPriceRange([
+      Math.floor(Math.min(...prices)),
+      Math.ceil(Math.max(...prices))
+    ]);
+    
     loadDashboardData();
   }, []);
   
   // Reload data when filters change
   useEffect(() => {
     loadDashboardData();
-  }, [dateRange, categoryFilter]);
-  
-  const loadDashboardData = async () => {
+  }, [dateRange, segmentFilter, priceRange]);
+
+  const loadDashboardData = () => {
     setIsLoading(true);
     
     try {
-      // Get sales data
-      const sales = getSalesByDateRange(dateRange[0], dateRange[1]);
-      setSalesData(sales);
+      // Filter the data based on current filters
+      let filtered = [...fixedSalesTableData];
       
-      // Get sales by category
-      const categories = getSalesByCategory(dateRange[0], dateRange[1]);
-      setCategoryData(categories);
-      
-      // Apply category filter if needed
-      let filteredCategories = categories;
-      if (categoryFilter.length > 0) {
-        filteredCategories = categories.filter(cat => categoryFilter.includes(cat.category));
-      }
-      
-      // Get top products (filtered by category if needed)
-      const products = getTopSellingProducts(dateRange[0], dateRange[1], 10);
-      const filteredProducts = categoryFilter.length > 0
-        ? products.filter(product => categoryFilter.includes(product.category))
-        : products;
-      
-      // Apply search filter if needed
-      const searchedProducts = searchQuery
-        ? filteredProducts.filter(product => 
-            product.productName.toLowerCase().includes(searchQuery.toLowerCase()))
-        : filteredProducts;
-      
-      // Apply price range filter
-      const priceFilteredProducts = searchedProducts.filter(product => 
-        product.averagePrice >= priceRange[0] && product.averagePrice <= priceRange[1]
+      // Apply date filter
+      filtered = filtered.filter(item => 
+        item.Date >= dateRange[0] && item.Date <= dateRange[1]
       );
       
-      setTopProducts(priceFilteredProducts);
+      // Apply segment filter
+      if (segmentFilter.length > 0) {
+        filtered = filtered.filter(item => 
+          segmentFilter.includes(item.Segment)
+        );
+      }
       
-      // Get customer segments
-      const segments = getCustomerSegments();
-      setCustomerSegments(segments);
+      // Apply price filter
+      filtered = filtered.filter(item => 
+        item["Sale Price"] >= priceRange[0] && 
+        item["Sale Price"] <= priceRange[1]
+      );
       
-      // Get order statuses
-      const statuses = getOrderStatusDistribution(dateRange[0], dateRange[1]);
-      setOrderStatuses(statuses);
-      
-      // Get KPIs
-      const kpiData = getKPIs(dateRange[0], dateRange[1]);
-      setKpis(kpiData);
+      setFilteredData(filtered);
       
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -112,91 +114,91 @@ export default function Dashboard() {
     }
   };
   
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    loadDashboardData();
-  };
-  
-  const handleExport = () => {
-    // Create a JSON blob with all the dashboard data
-    const dashboardData = {
-      salesData,
-      categoryData,
-      topProducts,
-      customerSegments,
-      orderStatuses,
-      kpis,
-      filters: {
-        dateRange,
-        categoryFilter,
-        searchQuery,
-        priceRange
+  // Aggregate sales data by date for the line chart
+  const aggregateSalesByDate = (data: any[]) => {
+    const aggregated = new Map();
+    
+    data.forEach(item => {
+      const date = format(parseISO(item.Date), 'MMM d');
+      if (!aggregated.has(date)) {
+        aggregated.set(date, {
+          date: item.Date,
+          name: date,
+          revenue: 0,
+          units: 0
+        });
       }
-    };
-    
-    const blob = new Blob([JSON.stringify(dashboardData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `dashboard-export-${format(new Date(), 'yyyy-MM-dd')}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-  
-  const handleDateRangeChange = (startDate: string, endDate: string) => {
-    setDateRange([startDate, endDate]);
-  };
-  
-  const handleCategoryFilterChange = (categories: string[]) => {
-    setCategoryFilter(categories);
-  };
-  
-  const handleSearchChange = (query: string) => {
-    setSearchQuery(query);
-    // Re-filter products based on search
-    const filteredProducts = topProducts.filter(product => 
-      product.productName.toLowerCase().includes(query.toLowerCase())
-    );
-    setTopProducts(filteredProducts);
-  };
-  
-  const handlePriceRangeChange = (range: [number, number]) => {
-    setPriceRange(range);
-    // Re-filter products based on price range
-    loadDashboardData();
-  };
-  
-  const handleShare = () => {
-    // Create a URL with filter parameters
-    const url = new URL(window.location.href);
-    url.searchParams.set('startDate', dateRange[0]);
-    url.searchParams.set('endDate', dateRange[1]);
-    
-    if (categoryFilter.length > 0) {
-      url.searchParams.set('categories', categoryFilter.join(','));
-    }
-    
-    if (searchQuery) {
-      url.searchParams.set('search', searchQuery);
-    }
-    
-    url.searchParams.set('minPrice', priceRange[0].toString());
-    url.searchParams.set('maxPrice', priceRange[1].toString());
-    
-    // Copy to clipboard
-    navigator.clipboard.writeText(url.toString()).then(() => {
-      alert('Dashboard URL copied to clipboard!');
+      const current = aggregated.get(date);
+      current.revenue += item.Sales;
+      current.units += item["Units Sold"];
     });
+    
+    return Array.from(aggregated.values())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
   
-  // Get available categories for filter
-  const categoryOptions = categoryData.map(cat => ({
-    value: cat.category,
-    label: cat.category
-  }));
+  // Aggregate sales by segment for the pie chart
+  const aggregateSalesBySegment = (data: any[]) => {
+    const aggregated = new Map();
+    
+    data.forEach(item => {
+      if (!aggregated.has(item.Segment)) {
+        aggregated.set(item.Segment, {
+          id: item.Segment,
+          label: item.Segment,
+          value: 0
+        });
+      }
+      const current = aggregated.get(item.Segment);
+      current.value += item.Sales;
+    });
+    
+    // Round values to 2 decimal places to avoid floating point precision issues
+    return Array.from(aggregated.values()).map(item => ({
+      ...item,
+      value: Number(item.value.toFixed(2))
+    }));
+  };
   
+  // Get top products by sales
+  const getTopProducts = (data: any[], limit = 10) => {
+    const aggregated = new Map();
+    
+    data.forEach(item => {
+      if (!aggregated.has(item.Product)) {
+        aggregated.set(item.Product, {
+          name: item.Product,
+          revenue: 0,
+          units: 0
+        });
+      }
+      const current = aggregated.get(item.Product);
+      current.revenue += item.Sales;
+      current.units += item["Units Sold"];
+    });
+    
+    return Array.from(aggregated.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, limit);
+  };
+  
+  // Calculate KPIs from the filtered data
+  const calculateKPIs = (data: any[]) => {
+    const totalRevenue = data.reduce((sum, item) => sum + item.Sales, 0);
+    const totalUnits = data.reduce((sum, item) => sum + item["Units Sold"], 0);
+    const totalProfit = data.reduce((sum, item) => sum + item.Profit, 0);
+    const uniqueCustomers = new Set(data.map(item => item.Segment)).size;
+    
+    return {
+      totalRevenue,
+      totalUnits,
+      averageOrderValue: totalRevenue / totalUnits,
+      totalProfit,
+      profitMargin: (totalProfit / totalRevenue) * 100,
+      uniqueCustomers
+    };
+  };
+
   // Format currency
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -207,11 +209,24 @@ export default function Dashboard() {
     }).format(value);
   };
   
-  // Format percentage
-  const formatPercentage = (value: number) => {
-    return `${(value * 100).toFixed(1)}%`;
-  };
-  
+  // Get available segments for filter
+  const segmentOptions = useMemo(() => 
+    Array.from(new Set(fixedSalesTableData.map(item => item.Segment)))
+      .map(segment => ({
+        value: segment,
+        label: segment
+      })),
+    [fixedSalesTableData]
+  );
+
+  // Calculate KPIs
+  const kpis = useMemo(() => calculateKPIs(filteredData), [filteredData]);
+
+  // Memoize expensive calculations
+  const salesByDate = useMemo(() => aggregateSalesByDate(filteredData), [filteredData]);
+  const salesBySegment = useMemo(() => aggregateSalesBySegment(filteredData), [filteredData]);
+  const topProductsData = useMemo(() => getTopProducts(filteredData), [filteredData]);
+
   return (
     <DashboardLayout>
       <PageHeader
@@ -220,26 +235,19 @@ export default function Dashboard() {
         actions={
           <div className="flex space-x-3">
             <button
-              onClick={handleRefresh}
+              onClick={() => setShowRawData(!showRawData)}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <Database className="h-4 w-4 mr-2" />
+              {showRawData ? 'Hide Raw Data' : 'Show Raw Data'}
+            </button>
+            <button
+              onClick={loadDashboardData}
               disabled={isRefreshing}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
-            </button>
-            <button
-              onClick={handleExport}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </button>
-            <button
-              onClick={handleShare}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-            >
-              <Share2 className="h-4 w-4 mr-2" />
-              Share
             </button>
           </div>
         }
@@ -248,196 +256,140 @@ export default function Dashboard() {
       {/* Filters Section */}
       <div className="bg-white rounded-xl shadow-card p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="w-full">
             <DatePicker
               startDate={dateRange[0]}
               endDate={dateRange[1]}
-              onStartDateChange={(date) => handleDateRangeChange(date, dateRange[1])}
-              onEndDateChange={(date) => handleDateRangeChange(dateRange[0], date)}
+              onStartDateChange={(date) => setDateRange([date, dateRange[1]])}
+              onEndDateChange={(date) => setDateRange([dateRange[0], date])}
               label="Date Range"
+              minDate={availableDates.min}
+              maxDate={availableDates.max}
             />
           </div>
           
-          <div>
+          <div className="w-full">
             <FilterDropdown
-              options={categoryOptions}
-              value={categoryFilter}
-              onChange={handleCategoryFilterChange}
-              label="Product Categories"
-              placeholder="All Categories"
+              options={segmentOptions}
+              value={segmentFilter}
+              onChange={setSegmentFilter}
+              label="Customer Segments"
+              placeholder="All Segments"
               multiple={true}
             />
           </div>
           
-          <div>
-            <SearchBar
-              onSearch={handleSearchChange}
-              placeholder="Search products..."
-              label="Product Search"
-            />
-          </div>
-          
-          <div>
+          <div className="w-full">
             <RangeSlider
-              min={0}
-              max={1000}
-              step={10}
+              min={priceRangeLimits.min}
+              max={priceRangeLimits.max}
+              step={Math.max(1, Math.floor((priceRangeLimits.max - priceRangeLimits.min) / 100))}
               value={priceRange}
-              onChange={handlePriceRangeChange}
+              onChange={setPriceRange}
               label="Price Range"
-              formatValue={(val) => `$${val}`}
+              formatValue={(val) => formatCurrency(val)}
             />
           </div>
         </div>
       </div>
-      
+
       {/* Loading Overlay */}
       <div className="relative">
         {isLoading && (
           <div className="absolute inset-0 bg-white bg-opacity-70 z-10 flex items-center justify-center">
-            <div className="bg-white p-4 rounded-lg shadow-lg flex items-center">
-              <LoadingSpinner size="medium" className="mr-3" />
-              <p className="text-gray-700">Loading dashboard data...</p>
-            </div>
+            <LoadingSpinner size="medium" />
           </div>
         )}
         
         {/* KPI Cards */}
-        {kpis && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <Card
-              title="Total Revenue"
-              value={formatCurrency(kpis.totalRevenue)}
-              change={kpis.revenueGrowth * 100}
-              icon="DollarSign"
-              description="vs previous period"
-            />
-            
-            <Card
-              title="Orders"
-              value={kpis.orderCount.toString()}
-              change={kpis.orderCountGrowth * 100}
-              icon="ShoppingCart"
-              description="vs previous period"
-            />
-            
-            <Card
-              title="Average Order Value"
-              value={formatCurrency(kpis.averageOrderValue)}
-              icon="TrendingUp"
-              description="per order"
-            />
-            
-            <Card
-              title="Active Customers"
-              value={kpis.activeCustomers.toString()}
-              icon="Users"
-              description={`${kpis.newCustomers} new customers`}
-            />
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <Card
+            title="Total Revenue"
+            value={formatCurrency(kpis.totalRevenue)}
+            icon="DollarSign"
+            description="Total sales revenue"
+          />
+          
+          <Card
+            title="Total Units Sold"
+            value={kpis.totalUnits.toString()}
+            icon="Package"
+            description="Number of units sold"
+          />
+          
+          <Card
+            title="Average Order Value"
+            value={formatCurrency(kpis.averageOrderValue)}
+            icon="TrendingUp"
+            description="Average revenue per unit"
+          />
+          
+          <Card
+            title="Profit Margin"
+            value={`${kpis.profitMargin.toFixed(1)}%`}
+            icon="PieChart"
+            description="Overall profit margin"
+          />
+        </div>
         
         {/* Charts Row 1 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Sales Trend */}
           <div className="lg:col-span-2">
             <LineChart
-              data={salesData}
+              data={salesByDate}
               series={[
                 { key: 'revenue', color: '#8884d8', name: 'Revenue' },
+                { key: 'units', color: '#82ca9d', name: 'Units Sold' }
               ]}
               title="Sales Trend"
-              description="Daily revenue over the selected period"
+              description="Daily revenue and units sold"
               xAxis={{ title: 'Date' }}
-              yAxis={{ title: 'Revenue ($)' }}
-              tooltipFormat={(value) => formatCurrency(value as number)}
+              yAxis={{ title: 'Amount' }}
+              tooltipFormat={(value: number | string) => typeof value === 'number' ? formatCurrency(value) : value.toString()}
             />
           </div>
           
-          {/* Category Distribution */}
+          {/* Segment Distribution */}
           <div>
             <PieChart
-              data={categoryData.map(cat => ({
-                id: cat.category,
-                label: cat.category,
-                value: cat.revenue
-              }))}
-              title="Sales by Category"
-              description="Revenue distribution across product categories"
+              data={salesBySegment}
+              title="Sales by Segment"
+              description="Revenue distribution across customer segments"
               donut={true}
+              tooltipFormat={(value: number) => formatCurrency(value)}
+              valueFormat={(value: number) => formatCurrency(value)}
             />
           </div>
         </div>
         
-        {/* Charts Row 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Top Products */}
-          <div className="lg:col-span-2">
-            <BarChart
-              data={topProducts.map(product => ({
-                name: product.productName.length > 20 
-                  ? product.productName.substring(0, 20) + '...' 
-                  : product.productName,
-                revenue: product.revenue,
-                units: product.units
-              }))}
-              series={[
-                { key: 'revenue', color: '#82ca9d', name: 'Revenue' },
-              ]}
-              title="Top Selling Products"
-              description="Products with highest revenue in the selected period"
-              layout="horizontal"
-              xAxis={{ title: 'Revenue ($)' }}
-              yAxis={{ title: 'Product' }}
-              tooltipFormat={(value) => formatCurrency(value as number)}
-            />
-          </div>
-          
-          {/* Order Status */}
-          <div>
-            <PieChart
-              data={orderStatuses.map(status => ({
-                id: status.status,
-                label: status.status.charAt(0).toUpperCase() + status.status.slice(1),
-                value: status.count
-              }))}
-              title="Order Status Distribution"
-              description="Breakdown of orders by current status"
-            />
-          </div>
-        </div>
-        
-        {/* Customer Segments */}
+        {/* Top Products */}
         <div className="mb-6">
           <BarChart
-            data={customerSegments.map(segment => ({
-              name: segment.segment.charAt(0).toUpperCase() + segment.segment.slice(1),
-              customers: segment.count,
-              avgSpent: segment.averageSpent,
-              active: segment.active
-            }))}
+            data={topProductsData}
             series={[
-              { key: 'customers', color: '#8884d8', name: 'Total Customers' },
-              { key: 'active', color: '#82ca9d', name: 'Active Customers' },
+              { key: 'revenue', color: '#8884d8', name: 'Revenue' },
+              { key: 'units', color: '#82ca9d', name: 'Units' }
             ]}
-            title="Customer Segments"
-            description="Customer distribution by segment with activity status"
+            title="Top Products"
+            description="Best performing products by revenue"
             layout="vertical"
-            xAxis={{ title: 'Customers' }}
-            yAxis={{ title: 'Segment' }}
+            xAxis={{ title: 'Revenue ($)' }}
+            yAxis={{ title: 'Product' }}
+            tooltipFormat={(value: number | string) => typeof value === 'number' ? formatCurrency(value) : value.toString()}
           />
         </div>
         
-        {/* No Data State */}
-        {!isLoading && salesData.length === 0 && (
-          <div className="bg-white rounded-xl shadow-card p-8 text-center">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No data available</h3>
-            <p className="text-gray-500">
-              Try adjusting your filters or selecting a different date range.
-            </p>
-          </div>
-        )}
+        {/* Sales Data Table */}
+        <div className="mb-6">
+          <SalesDataTable 
+            title="Detailed Sales Data"
+            description="Comprehensive sales data with segment, product, and financial information"
+            data={filteredData}
+            pageSize={10}
+          />
+        </div>
       </div>
     </DashboardLayout>
   );

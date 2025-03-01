@@ -28,13 +28,18 @@ interface SidebarProps {
   onToggleExpand: () => void;
 }
 
-const navigation = [
+// Consolidated dashboards into a single item
+const dashboardItems = [
   { name: 'Sales Dashboard', href: '/dashboard', icon: BarChart },
   { name: 'Inventory Dashboard', href: '/inventory', icon: Package },
   { name: 'Marketing Dashboard', href: '/marketing', icon: TrendingUp },
-  { name: 'Create Dashboard', href: '/dashboard/create', icon: PlusSquare },
+];
+
+const navigation = [
+  // Dashboards will be handled separately
   { name: 'Chart Docs', href: '/docs/charts', icon: BookOpen },
   { name: 'Magic Charts', href: '/magic-charts', icon: Wand2 },
+  { name: 'Create Dashboard', href: '/dashboard/create', icon: PlusSquare },
 ];
 
 const secondaryNavigation = [
@@ -48,13 +53,18 @@ export function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: Sidebar
   const isActive = (path: string) => location.pathname === path;
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showDashboardDropdown, setShowDashboardDropdown] = useState(false);
+  const templateDropdownRef = useRef<HTMLDivElement>(null);
+  const dashboardDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (templateDropdownRef.current && !templateDropdownRef.current.contains(event.target as Node)) {
         setShowTemplateDropdown(false);
+      }
+      if (dashboardDropdownRef.current && !dashboardDropdownRef.current.contains(event.target as Node)) {
+        setShowDashboardDropdown(false);
       }
     }
 
@@ -71,6 +81,12 @@ export function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: Sidebar
     onClose();
   };
 
+  const handleDashboardSelect = (href: string) => {
+    navigate(href);
+    setShowDashboardDropdown(false);
+    onClose();
+  };
+
   // Template icons mapping
   const templateIconMap: Record<string, React.ElementType> = {
     'executive-overview': Activity,
@@ -82,6 +98,20 @@ export function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: Sidebar
   // Function to render tooltip content based on item name
   const getTooltipContent = (itemName: string) => {
     switch(itemName) {
+      case 'Dashboards':
+        return (
+          <div className="p-2">
+            <p>Access all your dashboards in one place.</p>
+            <div className="mt-2 pt-2 border-t border-gray-700">
+              <p className="font-medium">Available dashboards:</p>
+              <ul className="mt-1 list-disc list-inside text-xs">
+                <li>Sales Dashboard</li>
+                <li>Inventory Dashboard</li>
+                <li>Marketing Dashboard</li>
+              </ul>
+            </div>
+          </div>
+        );
       case 'Sales Dashboard':
         return 'View sales metrics, revenue trends, and product performance';
       case 'Inventory Dashboard':
@@ -115,6 +145,11 @@ export function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: Sidebar
         return itemName;
     }
   };
+
+  // Check if any dashboard is active
+  const isDashboardActive = dashboardItems.some(item => isActive(item.href));
+  // Get the active dashboard if any
+  const activeDashboard = dashboardItems.find(item => isActive(item.href));
 
   return (
     <>
@@ -157,13 +192,88 @@ export function Sidebar({ isOpen, isExpanded, onClose, onToggleExpand }: Sidebar
 
         <div className="flex-1 flex flex-col overflow-y-auto">
           <nav className="flex-1 px-2 py-4 space-y-1">
+            {/* Dashboards Dropdown */}
+            <div className="relative group" ref={dashboardDropdownRef}>
+              <button
+                className={`w-full ${
+                  isDashboardActive
+                    ? 'bg-gray-100 text-gray-900'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                } group flex items-center justify-between px-2 py-2 text-sm font-medium rounded-md`}
+                onClick={() => setShowDashboardDropdown(!showDashboardDropdown)}
+                onMouseEnter={() => setHoveredItem('Dashboards')}
+                onMouseLeave={() => setHoveredItem(null)}
+              >
+                <div className="flex items-center">
+                  <LayoutDashboard className={`${
+                    isDashboardActive
+                      ? 'text-gray-500'
+                      : 'text-gray-400 group-hover:text-gray-500'
+                  } flex-shrink-0 h-6 w-6`} />
+                  <span 
+                    className={`ml-3 whitespace-nowrap transition-opacity duration-300 ${
+                      isExpanded ? 'opacity-100' : 'opacity-0 md:hidden'
+                    }`}
+                  >
+                    {activeDashboard ? activeDashboard.name : 'Dashboards'}
+                  </span>
+                </div>
+                {isExpanded && (
+                  <ChevronDown 
+                    className={`h-4 w-4 transition-transform duration-200 ${
+                      showDashboardDropdown ? 'transform rotate-180' : ''
+                    }`} 
+                  />
+                )}
+              </button>
+              
+              {/* Enhanced tooltip for collapsed mode */}
+              {!isExpanded && (
+                <div className="absolute left-full ml-2 top-0 z-10 w-64 bg-gray-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                  {getTooltipContent('Dashboards')}
+                </div>
+              )}
+              
+              {hoveredItem === 'Dashboards' && isExpanded && !showDashboardDropdown && (
+                <div className="absolute left-full ml-2 top-0 z-10 w-64 p-2 bg-gray-800 text-white text-xs rounded shadow-lg">
+                  <p>Access all your dashboards in one place.</p>
+                  <p className="mt-1">View sales, inventory, and marketing metrics.</p>
+                </div>
+              )}
+              
+              {/* Dashboards dropdown */}
+              {showDashboardDropdown && isExpanded && (
+                <div className="absolute left-0 right-0 mt-1 z-10 bg-white rounded-md shadow-lg border border-gray-200 py-1">
+                  {dashboardItems.map(dashboard => {
+                    const DashboardIcon = dashboard.icon;
+                    return (
+                      <button
+                        key={dashboard.name}
+                        className={`w-full text-left px-4 py-2 text-sm ${
+                          isActive(dashboard.href)
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        } flex items-center`}
+                        onClick={() => handleDashboardSelect(dashboard.href)}
+                      >
+                        <DashboardIcon className={`h-4 w-4 ${
+                          isActive(dashboard.href) ? 'text-gray-500' : 'text-gray-400'
+                        } mr-2`} />
+                        <span>{dashboard.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {navigation.map((item) => {
               const Icon = item.icon;
               const isCreateDashboard = item.name === 'Create Dashboard';
               
               if (isCreateDashboard) {
                 return (
-                  <div key={item.name} className="relative group" ref={dropdownRef}>
+                  <div key={item.name} className="relative group" ref={templateDropdownRef}>
                     <button
                       className={`w-full ${
                         isActive(item.href)
